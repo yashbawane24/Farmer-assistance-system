@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import User from '../models/User';
 import Otp from '../models/Otp';
 import OtpRequestLog from '../models/OtpRequestLog';
@@ -310,6 +311,35 @@ export const toggleBookmark = async (req: AuthRequest, res: Response) => {
       success: true,
       bookmarks: user.bookmarks,
       message: index > -1 ? 'Bookmark removed' : 'Bookmark added'
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const loginWithPassword = async (req: Request, res: Response) => {
+  try {
+    const { mobile, password } = req.body;
+    if (!mobile || !password) {
+      return res.status(400).json({ success: false, message: 'Mobile number and password are required' });
+    }
+
+    const user = await User.findOne({ mobile });
+    if (!user || !user.password) {
+      return res.status(400).json({ success: false, message: 'Invalid mobile number or password.' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Invalid mobile number or password.' });
+    }
+
+    const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+
+    res.status(200).json({
+      success: true,
+      token,
+      user
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

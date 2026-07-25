@@ -19,7 +19,7 @@ const DistrictsByState: Record<string, string[]> = {
 };
 
 const Login: React.FC = () => {
-  const { requestOTP, verifyOTPCode, registerProfile } = useAuth();
+  const { requestOTP, verifyOTPCode, registerProfile, loginWithPassword } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -38,6 +38,10 @@ const Login: React.FC = () => {
   const [village, setVillage] = useState('');
   const [farmSize, setFarmSize] = useState('');
   const [primaryCrop, setPrimaryCrop] = useState('');
+
+  // Password Fallback login states
+  const [usePassword, setUsePassword] = useState(false);
+  const [password, setPassword] = useState('');
 
   // Cooldown and UI states
   const [cooldown, setCooldown] = useState(0);
@@ -143,6 +147,21 @@ const Login: React.FC = () => {
     }
   };
 
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      await loginWithPassword(mobile, password);
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Invalid mobile number or password.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12 dark:bg-slate-950">
       <div className="w-full max-w-md space-y-8 rounded-3xl glass-panel p-8 shadow-xl border border-slate-200 dark:border-slate-800">
@@ -172,50 +191,125 @@ const Login: React.FC = () => {
           </div>
         )}
 
-        {/* Step 1: Input Mobile Number */}
-        {step === 'mobile' && (
-          <form className="space-y-4" onSubmit={handleSendOTP}>
-            <div>
-              <label className="block text-xs font-semibold uppercase mb-1">Mobile Number</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                  <Phone className="h-5 w-5" />
-                </span>
-                <input
-                  required
-                  type="tel"
-                  placeholder="98765 43210"
-                  value={mobile}
-                  onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  className="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-3 dark:bg-slate-900 dark:border-slate-700 text-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                />
+        {/* Step 1: Input Mobile Number (OTP Mode) */}
+        {step === 'mobile' && !usePassword && (
+          <div className="space-y-4">
+            <form className="space-y-4" onSubmit={handleSendOTP}>
+              <div>
+                <label className="block text-xs font-semibold uppercase mb-1">Mobile Number</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                    <Phone className="h-5 w-5" />
+                  </span>
+                  <input
+                    required
+                    type="tel"
+                    placeholder="98765 43210"
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    className="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-3 dark:bg-slate-900 dark:border-slate-700 text-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
               </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase mb-1">Fallback Email (Optional)</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                    <span className="h-5 w-5 flex items-center justify-center text-sm font-semibold">@</span>
+                  </span>
+                  <input
+                    type="email"
+                    placeholder="farmer@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-3 dark:bg-slate-900 dark:border-slate-700 text-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+              
+              <button
+                type="submit"
+                disabled={loading || cooldown > 0}
+                className="w-full rounded-xl bg-primary-600 py-3 text-sm font-bold text-white shadow-md hover:bg-primary-700 disabled:opacity-50"
+              >
+                {loading ? 'Sending...' : cooldown > 0 ? `Resend in ${cooldown}s` : 'Send Verification OTP'}
+              </button>
+            </form>
+
+            <div className="text-center pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setUsePassword(true)}
+                className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline"
+              >
+                Sign In with Password
+              </button>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold uppercase mb-1">Fallback Email (Optional)</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                  <span className="h-5 w-5 flex items-center justify-center text-sm font-semibold">@</span>
-                </span>
-                <input
-                  type="email"
-                  placeholder="farmer@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-3 dark:bg-slate-900 dark:border-slate-700 text-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                />
-              </div>
+            <div className="rounded-xl bg-slate-50 dark:bg-slate-900/50 p-4 border border-slate-200/50 dark:border-slate-800/50 text-xs text-slate-500 dark:text-slate-400 text-center">
+              💡 <strong>Don't have an account?</strong> Simply enter your Mobile Number and Email above and click "Send Verification OTP". Once verified, you will proceed to the profile setup screen.
             </div>
-            
-            <button
-              type="submit"
-              disabled={loading || cooldown > 0}
-              className="w-full rounded-xl bg-primary-600 py-3 text-sm font-bold text-white shadow-md hover:bg-primary-700 disabled:opacity-50"
-            >
-              {loading ? 'Sending...' : cooldown > 0 ? `Resend in ${cooldown}s` : 'Send Verification OTP'}
-            </button>
-          </form>
+          </div>
+        )}
+
+        {/* Step 1 Alternate: Input Mobile + Password */}
+        {step === 'mobile' && usePassword && (
+          <div className="space-y-4">
+            <form className="space-y-4" onSubmit={handlePasswordLogin}>
+              <div>
+                <label className="block text-xs font-semibold uppercase mb-1">Mobile Number</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                    <Phone className="h-5 w-5" />
+                  </span>
+                  <input
+                    required
+                    type="tel"
+                    placeholder="98765 43210"
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    className="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-3 dark:bg-slate-900 dark:border-slate-700 text-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase mb-1">Password</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                    <Lock className="h-5 w-5" />
+                  </span>
+                  <input
+                    required
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-3 dark:bg-slate-900 dark:border-slate-700 text-sm focus:border-primary-500"
+                  />
+                </div>
+              </div>
+              
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-xl bg-primary-600 py-3 text-sm font-bold text-white shadow-md hover:bg-primary-700 disabled:opacity-50"
+              >
+                {loading ? 'Signing in...' : 'Sign In'}
+              </button>
+            </form>
+
+            <div className="text-center pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setUsePassword(false)}
+                className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline"
+              >
+                Sign In with OTP Verification
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Step 2: Input Verification Code */}

@@ -27,6 +27,7 @@ interface AuthContextProps {
   requestOTP: (mobile: string, email?: string) => Promise<boolean>;
   verifyOTPCode: (mobile: string, otp: string) => Promise<{ isRegistered: boolean; user?: UserProfile }>;
   registerProfile: (profile: Omit<UserProfile, '_id' | 'role' | 'bookmarks'>) => Promise<void>;
+  loginWithPassword: (mobile: string, passwordFallback: string) => Promise<void>;
   logout: () => void;
   updateProfileData: (data: Partial<UserProfile>) => Promise<void>;
   toggleBookmarkAPI: (type: 'scheme' | 'marketPrice', id: string) => Promise<void>;
@@ -109,6 +110,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithPassword = async (mobile: string, passwordFallback: string) => {
+    if (!mobile || !passwordFallback) {
+      throw new Error('Please fill in credentials');
+    }
+    const res = await axios.post('/api/auth/login', { mobile, password: passwordFallback });
+    if (res.data.success && res.data.token) {
+      localStorage.setItem('farmer_token', res.data.token);
+      setToken(res.data.token);
+      setUser(res.data.user);
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('farmer_token');
     setToken(null);
@@ -154,6 +167,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         requestOTP,
         verifyOTPCode,
         registerProfile,
+        loginWithPassword,
         logout,
         updateProfileData,
         toggleBookmarkAPI,
