@@ -82,22 +82,23 @@ export const sendOTP = async (req: Request, res: Response) => {
     const otp = generateNumericOTP();
     const hashedOtp = hashOTP(otp);
 
-    // Delivery Flow: Twilio SMS (Primary) -> Email (Fallback) -> Developer Terminal Log (Fallback)
+    // Delivery Flow: Email (Primary) -> Twilio SMS (Fallback) -> Developer Terminal Log (Fallback)
     let delivered = false;
-    let deliveryMethod = 'sms';
+    let deliveryMethod = 'email';
 
-    // Attempt Twilio SMS
-    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-      delivered = await sendSMS(mobile, `Your Smart Farmer System verification code is: ${otp}. Valid for 5 minutes.`);
+    // Find registered user's email or use input email
+    const user = await User.findOne({ mobile });
+    const emailToUse = email || user?.email;
+
+    if (emailToUse) {
+      delivered = await sendEmailOTP(emailToUse, otp);
     }
 
-    // Attempt Email fallback if SMS is not configured or fails
+    // Fallback to Twilio SMS if email delivery fails or is not configured
     if (!delivered) {
-      const user = await User.findOne({ mobile });
-      const emailToUse = email || user?.email;
-      if (emailToUse) {
-        delivered = await sendEmailOTP(emailToUse, otp);
-        deliveryMethod = 'email';
+      if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+        delivered = await sendSMS(mobile, `Your Smart Farmer System verification code is: ${otp}. Valid for 5 minutes.`);
+        deliveryMethod = 'sms';
       }
     }
 
@@ -105,6 +106,9 @@ export const sendOTP = async (req: Request, res: Response) => {
     if (!delivered) {
       console.log('\n=============================================================');
       console.log(`[OTP DEVELOPMENT BACKEND LOG] Generated OTP for ${mobile} is: ${otp}`);
+      if (emailToUse) {
+        console.log(`Target email: ${emailToUse}`);
+      }
       console.log('=============================================================\n');
       delivered = true;
       deliveryMethod = 'console';

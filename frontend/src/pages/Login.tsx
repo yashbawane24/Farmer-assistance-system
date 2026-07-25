@@ -213,12 +213,13 @@ const Login: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase mb-1">Fallback Email (Optional)</label>
+                <label className="block text-xs font-semibold uppercase mb-1">Email Address (Required for OTP)</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                     <span className="h-5 w-5 flex items-center justify-center text-sm font-semibold">@</span>
                   </span>
                   <input
+                    required
                     type="email"
                     placeholder="farmer@example.com"
                     value={email}
