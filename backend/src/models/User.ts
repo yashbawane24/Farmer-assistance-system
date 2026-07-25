@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IUser extends Document {
   name: string;
   mobile: string;
+  email?: string;
   password?: string;
   state: string;
   district: string;
@@ -22,6 +23,7 @@ export interface IUser extends Document {
 const UserSchema: Schema = new Schema({
   name: { type: String, required: true },
   mobile: { type: String, required: true, unique: true },
+  email: { type: String, unique: true, sparse: true },
   password: { type: String }, // Hashed password for fallback login
   state: { type: String, required: true },
   district: { type: String, required: true },

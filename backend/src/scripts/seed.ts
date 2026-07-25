@@ -197,6 +197,7 @@ const seedDB = async () => {
     const admin = new User({
       name: 'System Admin',
       mobile: '9999999999',
+      email: 'admin@farmer.com',
       password: adminPassword,
       state: 'Maharashtra',
       district: 'Pune',
@@ -207,13 +208,14 @@ const seedDB = async () => {
       role: 'admin'
     });
     await admin.save();
-    console.log('Admin profile created: Mobile=9999999999, Password=admin123');
+    console.log('Admin profile created: Mobile=9999999999, Email=admin@farmer.com, Password=admin123');
 
     // Create a regular user for demonstration
     const userPassword = await bcrypt.hash('farmer123', salt);
     const user = new User({
       name: 'Ramesh Patel',
       mobile: '9876543210',
+      email: 'ramesh@farmer.com',
       password: userPassword,
       state: 'Madhya Pradesh',
       district: 'Indore',

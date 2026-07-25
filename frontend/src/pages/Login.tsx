@@ -19,7 +19,7 @@ const DistrictsByState: Record<string, string[]> = {
 };
 
 const Login: React.FC = () => {
-  const { requestOTP, verifyOTPCode, registerProfile, loginWithPasswordFallback } = useAuth();
+  const { requestOTP, verifyOTPCode, registerProfile } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -27,23 +27,32 @@ const Login: React.FC = () => {
   // 'mobile' -> 'otp' -> 'register' (if new user)
   const [step, setStep] = useState<'mobile' | 'otp' | 'register'>('mobile');
   const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState(''); // New: Optional email fallback input
   const [otp, setOtp] = useState('');
   
   // Registration States
   const [name, setName] = useState('');
+  const [regEmail, setRegEmail] = useState(''); // Email collected on profile setup
   const [state, setState] = useState('Maharashtra');
   const [district, setDistrict] = useState('Pune');
   const [village, setVillage] = useState('');
   const [farmSize, setFarmSize] = useState('');
   const [primaryCrop, setPrimaryCrop] = useState('');
 
-  // Fallback direct login switcher (for testing seed data)
-  const [usePassword, setUsePassword] = useState(false);
-  const [password, setPassword] = useState('');
-
+  // Cooldown and UI states
+  const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Timer countdown hook
+  React.useEffect(() => {
+    if (cooldown <= 0) return;
+    const interval = setInterval(() => {
+      setCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [cooldown]);
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,10 +64,16 @@ const Login: React.FC = () => {
       return;
     }
 
+    if (cooldown > 0) {
+      setError(`Please wait ${cooldown} seconds before requesting a new OTP.`);
+      return;
+    }
+
     setLoading(true);
     try {
-      const success = await requestOTP(mobile);
+      const success = await requestOTP(mobile, email || undefined);
       if (success) {
+        setCooldown(60); // Start 60-second cooldown on successful OTP request
         setStep('otp');
         setMsg('Verification OTP code sent to your mobile number.');
       } else {
@@ -66,6 +81,10 @@ const Login: React.FC = () => {
       }
     } catch (err: any) {
       setError(err.message || 'Server connection error.');
+      const remaining = err.cooldownRemaining || err.response?.data?.cooldownRemaining;
+      if (remaining) {
+        setCooldown(remaining);
+      }
     } finally {
       setLoading(false);
     }
@@ -82,7 +101,8 @@ const Login: React.FC = () => {
         // User exists and is now logged in
         navigate('/dashboard');
       } else {
-        // New user, redirect to profile setup details
+        // New user, redirect to profile setup details (pre-fill email if entered in step 1)
+        setRegEmail(email);
         setStep('register');
       }
     } catch (err: any) {
@@ -107,6 +127,7 @@ const Login: React.FC = () => {
       await registerProfile({
         name,
         mobile,
+        email: regEmail || undefined,
         state,
         district,
         village,
@@ -117,21 +138,6 @@ const Login: React.FC = () => {
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Profile registration failed.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordFallbackLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      await loginWithPasswordFallback(mobile, password);
-      navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Invalid credentials.');
     } finally {
       setLoading(false);
     }
@@ -167,7 +173,7 @@ const Login: React.FC = () => {
         )}
 
         {/* Step 1: Input Mobile Number */}
-        {step === 'mobile' && !usePassword && (
+        {step === 'mobile' && (
           <form className="space-y-4" onSubmit={handleSendOTP}>
             <div>
               <label className="block text-xs font-semibold uppercase mb-1">Mobile Number</label>
@@ -185,81 +191,30 @@ const Login: React.FC = () => {
                 />
               </div>
             </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase mb-1">Fallback Email (Optional)</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                  <span className="h-5 w-5 flex items-center justify-center text-sm font-semibold">@</span>
+                </span>
+                <input
+                  type="email"
+                  placeholder="farmer@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-3 dark:bg-slate-900 dark:border-slate-700 text-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                />
+              </div>
+            </div>
             
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || cooldown > 0}
               className="w-full rounded-xl bg-primary-600 py-3 text-sm font-bold text-white shadow-md hover:bg-primary-700 disabled:opacity-50"
             >
-              {loading ? 'Sending...' : 'Send Verification OTP'}
+              {loading ? 'Sending...' : cooldown > 0 ? `Resend in ${cooldown}s` : 'Send Verification OTP'}
             </button>
-
-            <div className="text-center pt-2">
-              <button
-                type="button"
-                onClick={() => setUsePassword(true)}
-                className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline"
-              >
-                Use Password Access (Seed Accounts Test)
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Step 1 Alternate: Direct login using Password (for Admin seed testing) */}
-        {step === 'mobile' && usePassword && (
-          <form className="space-y-4" onSubmit={handlePasswordFallbackLogin}>
-            <div>
-              <label className="block text-xs font-semibold uppercase mb-1">Mobile Number</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                  <Phone className="h-5 w-5" />
-                </span>
-                <input
-                  required
-                  type="tel"
-                  placeholder="9999999999"
-                  value={mobile}
-                  onChange={(e) => setMobile(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-3 dark:bg-slate-900 dark:border-slate-700 text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold uppercase mb-1">Password</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                  <Lock className="h-5 w-5" />
-                </span>
-                <input
-                  required
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-3 dark:bg-slate-900 dark:border-slate-700 text-sm"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-xl bg-primary-600 py-3 text-sm font-bold text-white shadow-md hover:bg-primary-700 disabled:opacity-50"
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-
-            <div className="text-center pt-2">
-              <button
-                type="button"
-                onClick={() => setUsePassword(false)}
-                className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline"
-              >
-                Use OTP Sign In
-              </button>
-            </div>
           </form>
         )}
 
@@ -292,13 +247,24 @@ const Login: React.FC = () => {
               {loading ? 'Verifying...' : 'Verify OTP'}
             </button>
 
-            <button
-              type="button"
-              onClick={() => setStep('mobile')}
-              className="w-full text-center text-xs font-semibold text-slate-500 hover:underline"
-            >
-              Change Mobile Number
-            </button>
+            <div className="flex justify-between items-center text-xs pt-2">
+              <button
+                type="button"
+                onClick={() => setStep('mobile')}
+                className="text-slate-500 hover:underline"
+              >
+                Change Number
+              </button>
+
+              <button
+                type="button"
+                disabled={cooldown > 0 || loading}
+                onClick={handleSendOTP}
+                className="font-semibold text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50"
+              >
+                {cooldown > 0 ? `Resend OTP in ${cooldown}s` : 'Resend OTP'}
+              </button>
+            </div>
           </form>
         )}
 
@@ -318,6 +284,22 @@ const Login: React.FC = () => {
                   placeholder="Ram Singh"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase mb-1">Email Address (Optional)</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                  <span className="h-5 w-5 flex items-center justify-center text-sm font-semibold">@</span>
+                </span>
+                <input
+                  type="email"
+                  placeholder="farmer@example.com"
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
                   className="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm"
                 />
               </div>

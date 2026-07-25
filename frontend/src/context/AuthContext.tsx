@@ -5,6 +5,7 @@ export interface UserProfile {
   _id: string;
   name: string;
   mobile: string;
+  email?: string;
   state: string;
   district: string;
   village: string;
@@ -23,10 +24,9 @@ interface AuthContextProps {
   user: UserProfile | null;
   token: string | null;
   loading: boolean;
-  requestOTP: (mobile: string) => Promise<boolean>;
+  requestOTP: (mobile: string, email?: string) => Promise<boolean>;
   verifyOTPCode: (mobile: string, otp: string) => Promise<{ isRegistered: boolean; user?: UserProfile }>;
   registerProfile: (profile: Omit<UserProfile, '_id' | 'role' | 'bookmarks'>) => Promise<void>;
-  loginWithPasswordFallback: (mobile: string, passwordFallback: string) => Promise<void>;
   logout: () => void;
   updateProfileData: (data: Partial<UserProfile>) => Promise<void>;
   toggleBookmarkAPI: (type: 'scheme' | 'marketPrice', id: string) => Promise<void>;
@@ -71,16 +71,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchUser();
   }, [token]);
 
-  const requestOTP = async (mobile: string): Promise<boolean> => {
+  const requestOTP = async (mobile: string, email?: string): Promise<boolean> => {
     try {
-      const res = await axios.post('/api/auth/send-otp', { mobile });
-      if (res.data.otp) {
-        alert(`[Dev Mode Mode] Your verification code is: ${res.data.otp}`);
-      }
+      const res = await axios.post('/api/auth/send-otp', { mobile, email });
       return res.data.success;
-    } catch (err) {
-      console.error(err);
-      return false;
+    } catch (err: any) {
+      console.error('Error requesting OTP:', err);
+      const errMsg = err.response?.data?.message || 'Error sending OTP. Please try again.';
+      const cooldownRemaining = err.response?.data?.cooldownRemaining;
+      
+      const errorObj = new Error(errMsg) as any;
+      errorObj.cooldownRemaining = cooldownRemaining;
+      errorObj.response = err.response;
+      throw errorObj;
     }
   };
 
@@ -103,26 +106,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('farmer_token', res.data.token);
       setToken(res.data.token);
       setUser(res.data.user);
-    }
-  };
-
-  // Direct login for seed accounts
-  const loginWithPasswordFallback = async (mobile: string, passwordFallback: string) => {
-    // Standard validation
-    if (!mobile || !passwordFallback) {
-      throw new Error('Please fill in credentials');
-    }
-    
-    // Check local mockup or backend auth integration
-    // Note: Since OTP is primary, we simulate verification using a secret password key logic in dev
-    let res;
-    if (passwordFallback === 'admin123' || passwordFallback === 'farmer123') {
-      // Direct pass for dev seeds
-      const otp = '123456';
-      await requestOTP(mobile);
-      res = await verifyOTPCode(mobile, otp);
-    } else {
-      throw new Error('Invalid fallback password. For testing use "farmer123" or "admin123"');
     }
   };
 
@@ -171,7 +154,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         requestOTP,
         verifyOTPCode,
         registerProfile,
-        loginWithPasswordFallback,
         logout,
         updateProfileData,
         toggleBookmarkAPI,
