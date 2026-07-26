@@ -4,6 +4,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAccessibility } from '../context/AccessibilityContext';
 import { Sprout, Cloud, ShieldAlert, IndianRupee, Volume2, ShieldCheck, HeartHandshake, PhoneCall, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
+import TeamSection from '../components/home/TeamSection';
 
 const LandingPage: React.FC = () => {
   const { t } = useLanguage();
@@ -268,6 +269,9 @@ const LandingPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Meet Our Team Section */}
+      <TeamSection />
 
     </div>
   );
