@@ -7,6 +7,7 @@ interface TeamMember {
   role: string;
   description: string;
   image: string;
+  badge: string;
   socials: {
     linkedin: string;
     github: string;
@@ -16,47 +17,39 @@ interface TeamMember {
 
 const teamMembers: TeamMember[] = [
   {
-    name: 'Yash Bawane',
+    name: 'Manthan T',
     role: 'Frontend Developer & UI/UX Designer',
-    description: 'Designed the complete frontend, responsive UI, accessibility features, and user-centered experience for the Smart Farmer Assistance System.',
-    image: '/team/yash.jpg',
+    description: 'Designed and developed the complete user interface, responsive layouts, accessibility features, and user-centered experience for the Smart Farmer Assistance System.',
+    image: '/team/manthan.jpg',
+    badge: 'Frontend',
     socials: {
-      linkedin: 'https://linkedin.com/in/yashbawane',
-      github: 'https://github.com/yashbawane24',
+      linkedin: 'https://linkedin.com/',
+      github: 'https://github.com/',
+      email: 'mailto:manthan@example.com'
+    }
+  },
+  {
+    name: 'Yash Bawane',
+    role: 'Backend Developer',
+    description: 'Developed secure backend APIs, authentication, database integration, business logic, and server-side functionality to power the Smart Farmer Assistance System.',
+    image: '/team/yash.jpg',
+    badge: 'Backend',
+    socials: {
+      linkedin: 'https://linkedin.com/',
+      github: 'https://github.com/',
       email: 'mailto:yashbawane24@gmail.com'
     }
   },
   {
-    name: 'Deepak Dhewa',
-    role: 'Backend Developer',
-    description: 'Developed backend APIs, authentication, MongoDB integration, and secure server-side logic.',
-    image: '/team/deepak.jpg',
+    name: 'Rohit Kundu',
+    role: 'Deployment & Testing Engineer',
+    description: 'Managed deployment, application testing, cloud hosting, GitHub integration, debugging, and performance optimization to ensure a reliable user experience.',
+    image: '/team/rohit.jpg',
+    badge: 'Deployment',
     socials: {
-      linkedin: 'https://linkedin.com/in/deepak-dhewa',
-      github: 'https://github.com/deepak-dhewa',
-      email: 'mailto:deepak@example.com'
-    }
-  },
-  {
-    name: 'Meet Chaudhary',
-    role: 'AI & Machine Learning Developer',
-    description: 'Implemented crop disease detection, AI-powered recommendations, and intelligent farming features.',
-    image: '/team/meet.jpg',
-    socials: {
-      linkedin: 'https://linkedin.com/in/meet-chaudhary',
-      github: 'https://github.com/meet-chaudhary',
-      email: 'mailto:meet@example.com'
-    }
-  },
-  {
-    name: 'Dipanshu Shelke',
-    role: 'Deployment & Cloud Engineer',
-    description: 'Managed deployment, cloud infrastructure, GitHub integration, and application optimization.',
-    image: '/team/dipanshu.jpg',
-    socials: {
-      linkedin: 'https://linkedin.com/in/dipanshu-shelke',
-      github: 'https://github.com/dipanshu-shelke',
-      email: 'mailto:dipanshu@example.com'
+      linkedin: 'https://linkedin.com/',
+      github: 'https://github.com/',
+      email: 'mailto:rohit@example.com'
     }
   }
 ];
@@ -114,13 +107,13 @@ const TeamSection: React.FC = () => {
           </motion.div>
         </div>
 
-        {/* Cards Layout */}
+        {/* Cards Layout - Updated to 3 columns on desktop */}
         <motion.div 
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: '-150px' }}
-          className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4"
+          className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto"
         >
           {teamMembers.map((member, idx) => (
             <motion.div
@@ -132,12 +125,17 @@ const TeamSection: React.FC = () => {
               }}
               className="group relative flex flex-col items-center justify-between text-center bg-white/40 dark:bg-slate-800/40 p-6 rounded-[20px] shadow-sm border border-slate-100 dark:border-slate-850 backdrop-blur-md transition-all duration-300 overflow-hidden"
             >
+              {/* Custom Badge in top right corner */}
+              <span className="absolute top-4 right-4 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase border border-emerald-200/30 tracking-wider">
+                {member.badge}
+              </span>
+
               {/* Card top border glow on hover */}
               <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-500 to-green-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               
-              <div className="flex flex-col items-center">
+              <div className="flex flex-col items-center w-full">
                 {/* Profile Image Container with Glow */}
-                <div className="relative mb-6">
+                <div className="relative mb-6 mt-2">
                   <div className="absolute inset-0 rounded-full bg-emerald-500/20 opacity-0 group-hover:opacity-100 group-hover:scale-105 blur-md transition-all duration-300" />
                   <div className="relative h-28 w-28 rounded-full p-1 border-2 border-slate-200 dark:border-slate-700 group-hover:border-emerald-500 transition-colors duration-300 shadow-inner">
                     <img 
@@ -149,13 +147,13 @@ const TeamSection: React.FC = () => {
                 </div>
 
                 {/* Details */}
-                <h3 className="text-xl font-bold text-slate-855 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                   {member.name}
                 </h3>
-                <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-450 mt-1 mb-4 uppercase tracking-wider">
+                <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-1 mb-4 uppercase tracking-wider">
                   {member.role}
                 </p>
-                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed px-2">
+                <p className="text-sm text-slate-550 dark:text-slate-400 leading-relaxed px-2">
                   {member.description}
                 </p>
               </div>
@@ -206,7 +204,7 @@ const TeamSection: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="inline-block bg-gradient-to-r from-emerald-50 via-green-50/50 to-emerald-50 border border-emerald-100/50 rounded-2xl px-8 py-5 dark:from-slate-800/40 dark:via-slate-800/20 dark:to-slate-800/40 dark:border-slate-800"
           >
-            <p className="text-base sm:text-lg font-medium text-slate-700 dark:text-slate-350 italic">
+            <p className="text-base sm:text-lg font-medium text-slate-700 dark:text-slate-300 italic">
               "Together, we are building technology that makes farming smarter, simpler, and more accessible."
             </p>
           </motion.div>
