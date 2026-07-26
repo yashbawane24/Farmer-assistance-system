@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
+import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import WeatherDetails from './pages/WeatherDetails';
 import CropRecommendation from './pages/CropRecommendation';
 import DiseaseDetection from './pages/DiseaseDetection';
@@ -67,6 +69,8 @@ function App() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={!token ? <Login /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/register" element={!token ? <Register /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/forgot-password" element={!token ? <ForgotPassword /> : <Navigate to="/dashboard" replace />} />
             
             {/* Protected Farmer Routes */}
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

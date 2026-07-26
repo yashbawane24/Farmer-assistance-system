@@ -9,6 +9,7 @@ export interface IUser extends Document {
   district: string;
   village: string;
   farmSize?: number;
+  soilType?: string;
   primaryCrop?: string;
   language: string;
   profilePicture?: string;
@@ -18,17 +19,19 @@ export interface IUser extends Document {
     marketPrices: string[];
   };
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const UserSchema: Schema = new Schema({
   name: { type: String, required: true },
   mobile: { type: String, required: true, unique: true },
   email: { type: String, unique: true, sparse: true },
-  password: { type: String }, // Hashed password for fallback login
+  password: { type: String }, // Hashed password for login
   state: { type: String, required: true },
   district: { type: String, required: true },
   village: { type: String, required: true },
   farmSize: { type: Number },
+  soilType: { type: String },
   primaryCrop: { type: String },
   language: { type: String, default: 'en' },
   profilePicture: { type: String, default: '' },
@@ -36,8 +39,9 @@ const UserSchema: Schema = new Schema({
   bookmarks: {
     schemes: { type: [String], default: [] },
     marketPrices: { type: [String], default: [] }
-  },
-  createdAt: { type: Date, default: Date.now }
+  }
+}, {
+  timestamps: true
 });
 
 export default mongoose.model<IUser>('User', UserSchema);

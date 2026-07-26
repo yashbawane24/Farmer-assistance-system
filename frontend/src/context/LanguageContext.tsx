@@ -90,7 +90,20 @@ const translations: TranslationMap = {
   helpCenterTitle: { en: 'Help & Support Center', hi: 'सहायता और सहायता केंद्र', ta: 'உதவி மற்றும் ஆதரவு மையம்', mr: 'मदत आणि मदत केंद्र' },
   farmerFeedback: { en: 'Send Farmer Feedback', hi: 'किसान प्रतिक्रिया भेजें', ta: 'விவசாயி கருத்துக்களை அனுப்பவும்', mr: 'शेतकरी अभिप्राय पाठवा' },
   ratingPrompt: { en: 'Rate Us (1 to 5)', hi: 'हमें रेट करें (1 से 5)', ta: 'மதிப்பிடவும் (1 முதல் 5)', mr: 'आम्हाला रेट करा (१ ते ५)' },
-  feedbackSuccess: { en: 'Thank you for your feedback!', hi: 'आपकी प्रतिक्रिया के लिए धन्यवाद!', ta: 'உங்கள் கருத்துக்கு நன்றி!', mr: 'तुमच्या अभिप्रायाबद्दल धन्यवाद!' }
+  feedbackSuccess: { en: 'Thank you for your feedback!', hi: 'आपकी प्रतिक्रिया के लिए धन्यवाद!', ta: 'உங்கள் கருத்துக்கு நன்றி!', mr: 'तुमच्या अभिप्रायाबद्दल धन्यवाद!' },
+  signIn: { en: 'Sign In', hi: 'साइन इन', ta: 'உள்நுழைக', mr: 'साइन इन' },
+  createAccount: { en: 'Create Account', hi: 'खाता बनाएं', ta: 'கணக்கை உருவாக்கு', mr: 'खाते तयार करा' },
+  forgotPasswordLabel: { en: 'Forgot Password?', hi: 'पासवर्ड भूल गए?', ta: 'கடவுச்சொல்லை மறந்துவிட்டீர்களா?', mr: 'पासवर्ड विसरलात?' },
+  rememberMe: { en: 'Remember Me', hi: 'मुझे याद रखें', ta: 'என்னை நினைவில் கொள்', mr: 'माझी आठवण ठेवा' },
+  confirmPassword: { en: 'Confirm Password', hi: 'पासवर्ड की पुष्टि करें', ta: 'கடவுச்சொல்லை உறுதிப்படுத்தவும்', mr: 'पासवर्डची खात्री करा' },
+  soilTypeLabel: { en: 'Soil Type', hi: 'मिट्टी का प्रकार', ta: 'மண் வகை', mr: 'मातीचा प्रकार' },
+  primaryCropLabel: { en: 'Primary Crop', hi: 'मुख्य फसल', ta: 'முதன்மையான பயிர்', mr: 'मुख्य पीक' },
+  preferredLanguage: { en: 'Preferred Language', hi: 'पसंदीदा भाषा', ta: 'விருப்பமான மொழி', mr: 'पसंतीची भाषा' },
+  stateLabel: { en: 'State', hi: 'राज्य', ta: 'மாநிலம்', mr: 'राज्य' },
+  districtLabel: { en: 'District', hi: 'जिला', ta: 'மாவட்டம்', mr: 'जिल्हा' },
+  villageLabel: { en: 'Village', hi: 'गांव', ta: 'கிராமம்', mr: 'गाव' },
+  farmSizeLabel: { en: 'Farm Size (Acres)', hi: 'खेत का आकार (एकड़)', ta: 'பண்ணை அளவு (ஏக்கர்)', mr: 'शेतीचे आकारमान (एकर)' },
+  verification: { en: 'Verification', hi: 'सत्यापन', ta: 'சரிபார்ப்பு', mr: 'पडताळणी' }
 };
 
 interface LanguageContextProps {

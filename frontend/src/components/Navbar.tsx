@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useAccessibility } from '../context/AccessibilityContext';
-import { Menu, X, Sun, Moon, Languages, Type, Eye, LogOut, LayoutDashboard, Cloud, Sprout, ShieldAlert, IndianRupee, Library, HelpCircle, User } from 'lucide-react';
+import { Menu, X, Sun, Moon, Languages, Type, Eye, LogOut, LayoutDashboard, Cloud, Sprout, ShieldAlert, IndianRupee, Library, HelpCircle, User, Bell } from 'lucide-react';
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
@@ -181,13 +181,27 @@ const Navbar: React.FC = () => {
 
             {/* Profile & Logout */}
             {user ? (
-              <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-700">
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 relative"
+                  title="Notifications"
+                >
+                  <Bell className="h-5 w-5" />
+                  <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900" />
+                </button>
                 <Link
                   to="/profile"
                   className="flex items-center gap-1.5 p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                   title="My Profile"
                 >
-                  <User className="h-5 w-5" />
+                  {user.profilePicture ? (
+                    <img src={user.profilePicture} alt={user.name} className="h-6 w-6 rounded-full object-cover border border-slate-200" />
+                  ) : (
+                    <div className="h-6 w-6 rounded-full bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center text-xs font-bold text-emerald-700 dark:text-emerald-400 border border-emerald-200">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{user.name.split(' ')[0]}</span>
                 </Link>
                 <button
@@ -199,12 +213,20 @@ const Navbar: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <Link
-                to="/login"
-                className="ml-2 rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600"
-              >
-                {t('login')}
-              </Link>
+              <div className="flex items-center gap-2 pl-2">
+                <Link
+                  to="/login"
+                  className="rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  {t('signIn')}
+                </Link>
+                <Link
+                  to="/register"
+                  className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 shadow-sm"
+                >
+                  {t('createAccount')}
+                </Link>
+              </div>
             )}
           </div>
 
@@ -268,10 +290,23 @@ const Navbar: React.FC = () => {
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
-                  <User className="h-5 w-5" />
+                  {user.profilePicture ? (
+                    <img src={user.profilePicture} alt={user.name} className="h-6 w-6 rounded-full object-cover border border-slate-200" />
+                  ) : (
+                    <User className="h-5 w-5" />
+                  )}
                   <span>{t('profile')} ({user.name})</span>
                 </Link>
                 
+                <Link
+                  to="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <Bell className="h-5 w-5" />
+                  <span>Notifications</span>
+                </Link>
+
                 <button
                   onClick={handleLogout}
                   className="flex w-full items-center gap-3 px-3 py-3 rounded-lg text-base font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
@@ -281,13 +316,22 @@ const Navbar: React.FC = () => {
                 </button>
               </>
             ) : (
-              <Link
-                to="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block text-center rounded-xl bg-primary-600 px-4 py-3 text-base font-bold text-white dark:bg-primary-500"
-              >
-                {t('login')}
-              </Link>
+              <div className="space-y-2 px-3 py-2">
+                <Link
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block text-center rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-800 dark:border-slate-700 px-4 py-2.5 text-base font-bold text-slate-700 dark:text-slate-355"
+                >
+                  {t('signIn')}
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block text-center rounded-xl bg-primary-600 px-4 py-2.5 text-base font-bold text-white dark:bg-primary-500"
+                >
+                  {t('createAccount')}
+                </Link>
+              </div>
             )}
 
             <hr className="border-slate-200 dark:border-slate-700 my-2" />

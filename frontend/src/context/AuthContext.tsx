@@ -10,6 +10,7 @@ export interface UserProfile {
   district: string;
   village: string;
   farmSize?: number;
+  soilType?: string;
   primaryCrop?: string;
   language: string;
   profilePicture?: string;
@@ -27,11 +28,15 @@ interface AuthContextProps {
   requestOTP: (mobile: string, email?: string) => Promise<boolean>;
   verifyOTPCode: (mobile: string, otp: string) => Promise<{ isRegistered: boolean; user?: UserProfile }>;
   registerProfile: (profile: Omit<UserProfile, '_id' | 'role' | 'bookmarks'>) => Promise<void>;
-  loginWithPassword: (mobile: string, passwordFallback: string) => Promise<void>;
+  loginWithPassword: (identifier: string, passwordFallback: string) => Promise<void>;
   logout: () => void;
   updateProfileData: (data: Partial<UserProfile>) => Promise<void>;
   toggleBookmarkAPI: (type: 'scheme' | 'marketPrice', id: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  registerInit: (profile: Omit<UserProfile, '_id' | 'role' | 'bookmarks'> & { password?: string }) => Promise<void>;
+  verifyRegisterOtp: (email: string, otp: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (email: string, otp: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -110,16 +115,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithPassword = async (mobile: string, passwordFallback: string) => {
-    if (!mobile || !passwordFallback) {
+  const loginWithPassword = async (identifier: string, passwordFallback: string) => {
+    if (!identifier || !passwordFallback) {
       throw new Error('Please fill in credentials');
     }
-    const res = await axios.post('/api/auth/login', { mobile, password: passwordFallback });
+    const res = await axios.post('/api/auth/login', { identifier, password: passwordFallback });
     if (res.data.success && res.data.token) {
       localStorage.setItem('farmer_token', res.data.token);
       setToken(res.data.token);
       setUser(res.data.user);
     }
+  };
+
+  const registerInit = async (profile: Omit<UserProfile, '_id' | 'role' | 'bookmarks'> & { password?: string }) => {
+    await axios.post('/api/auth/register', profile);
+  };
+
+  const verifyRegisterOtp = async (email: string, otp: string) => {
+    const res = await axios.post('/api/auth/register/verify', { email, otp });
+    if (res.data.success && res.data.token) {
+      localStorage.setItem('farmer_token', res.data.token);
+      setToken(res.data.token);
+      setUser(res.data.user);
+    }
+  };
+
+  const forgotPassword = async (email: string) => {
+    await axios.post('/api/auth/forgot-password', { email });
+  };
+
+  const resetPassword = async (email: string, otp: string, newPassword: string) => {
+    await axios.post('/api/auth/reset-password', { email, otp, newPassword });
   };
 
   const logout = () => {
@@ -171,7 +197,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         updateProfileData,
         toggleBookmarkAPI,
-        refreshProfile
+        refreshProfile,
+        registerInit,
+        verifyRegisterOtp,
+        forgotPassword,
+        resetPassword
       }}
     >
       {children}

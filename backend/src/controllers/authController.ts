@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import User from '../models/User';
 import Otp from '../models/Otp';
 import OtpRequestLog from '../models/OtpRequestLog';
+import PendingUser from '../models/PendingUser';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { sendEmailOTP } from '../utils/otpSender';
 
@@ -310,19 +311,29 @@ export const toggleBookmark = async (req: AuthRequest, res: Response) => {
 
 export const loginWithPassword = async (req: Request, res: Response) => {
   try {
-    const { mobile, password } = req.body;
-    if (!mobile || !password) {
-      return res.status(400).json({ success: false, message: 'Mobile number and password are required' });
+    const { email, mobile, identifier, password } = req.body;
+    
+    // Support unified input or explicit inputs
+    const loginValue = identifier || email || mobile;
+    if (!loginValue || !password) {
+      return res.status(400).json({ success: false, message: 'Email or Mobile number, and password are required' });
     }
 
-    const user = await User.findOne({ mobile });
+    let user;
+    if (loginValue.includes('@')) {
+      user = await User.findOne({ email: loginValue.toLowerCase().trim() });
+    } else {
+      const cleanMobile = loginValue.replace(/\D/g, '');
+      user = await User.findOne({ mobile: cleanMobile });
+    }
+
     if (!user || !user.password) {
-      return res.status(400).json({ success: false, message: 'Invalid mobile number or password.' });
+      return res.status(400).json({ success: false, message: 'Invalid credentials or password.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: 'Invalid mobile number or password.' });
+      return res.status(400).json({ success: false, message: 'Invalid credentials or password.' });
     }
 
     const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
@@ -331,6 +342,304 @@ export const loginWithPassword = async (req: Request, res: Response) => {
       success: true,
       token,
       user
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const register = async (req: Request, res: Response) => {
+  try {
+    const {
+      name, email, mobile, password,
+      state, district, village, farmSize, soilType, primaryCrop, language
+    } = req.body;
+
+    if (!name || !email || !mobile || !password || !state || !district || !village) {
+      return res.status(400).json({ success: false, message: 'Missing required profile fields' });
+    }
+
+    // Check if user already exists
+    const existingUserMobile = await User.findOne({ mobile });
+    if (existingUserMobile) {
+      return res.status(400).json({ success: false, message: 'User already exists with this mobile number' });
+    }
+
+    const existingUserEmail = await User.findOne({ email: email.toLowerCase().trim() });
+    if (existingUserEmail) {
+      return res.status(400).json({ success: false, message: 'User already exists with this email address' });
+    }
+
+    // Rate Limiting & Cooldown for OTP (by email)
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+    const hourlyCount = await OtpRequestLog.countDocuments({
+      mobile: email.toLowerCase().trim(),
+      requestedAt: { $gte: oneHourAgo }
+    });
+
+    if (hourlyCount >= 5) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many OTP requests. Maximum 5 requests per hour. Please try again later.'
+      });
+    }
+
+    const latestLog = await OtpRequestLog.findOne({ mobile: email.toLowerCase().trim() }).sort({ requestedAt: -1 });
+    if (latestLog) {
+      const timePassed = now.getTime() - latestLog.requestedAt.getTime();
+      if (timePassed < 60 * 1000) {
+        const secondsLeft = Math.ceil((60 * 1000 - timePassed) / 1000);
+        return res.status(429).json({
+          success: false,
+          message: `Please wait ${secondsLeft} seconds before requesting another OTP.`,
+          cooldownRemaining: secondsLeft
+        });
+      }
+    }
+
+    // Log the request
+    await new OtpRequestLog({ mobile: email.toLowerCase().trim(), requestedAt: now }).save();
+
+    // Generate OTP
+    const otp = generateNumericOTP();
+    const hashedOtp = hashOTP(otp);
+
+    // Send OTP to email
+    const delivered = await sendEmailOTP(email, otp);
+    if (!delivered) {
+      return res.status(500).json({
+        success: false,
+        message: 'Email delivery failed. Please verify your email or SMTP configuration.'
+      });
+    }
+
+    // Hash Password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Save to PendingUser
+    await PendingUser.deleteMany({ email: email.toLowerCase().trim() });
+    await new PendingUser({
+      name,
+      email: email.toLowerCase().trim(),
+      mobile,
+      password: hashedPassword,
+      state,
+      district,
+      village,
+      farmSize: farmSize ? parseFloat(farmSize) : undefined,
+      soilType,
+      primaryCrop,
+      language: language || 'en',
+      otpHash: hashedOtp,
+      expiresAt: new Date(now.getTime() + 5 * 60 * 1000), // 5 mins expiry
+      attempts: 0
+    }).save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Verification OTP sent to your email.'
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const verifyRegisterOtp = async (req: Request, res: Response) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: 'Email and OTP are required' });
+    }
+
+    const now = new Date();
+    const pendingUser = await PendingUser.findOne({ email: email.toLowerCase().trim() });
+
+    if (!pendingUser) {
+      return res.status(400).json({ success: false, message: 'Registration session expired. Please register again.' });
+    }
+
+    if (pendingUser.expiresAt < now) {
+      await PendingUser.deleteOne({ _id: pendingUser._id });
+      return res.status(400).json({ success: false, message: 'OTP has expired. Please sign up again.' });
+    }
+
+    if (pendingUser.attempts >= 5) {
+      await PendingUser.deleteOne({ _id: pendingUser._id });
+      return res.status(429).json({ success: false, message: 'Too many incorrect OTP attempts. Please register again.' });
+    }
+
+    const inputHash = hashOTP(otp);
+    if (pendingUser.otpHash !== inputHash) {
+      pendingUser.attempts += 1;
+      await pendingUser.save();
+      return res.status(400).json({ success: false, message: 'Invalid OTP code.' });
+    }
+
+    // Create the User document
+    const totalUsers = await User.countDocuments({});
+    const role = totalUsers === 0 ? 'admin' : 'user';
+
+    const user = new User({
+      name: pendingUser.name,
+      mobile: pendingUser.mobile,
+      email: pendingUser.email,
+      password: pendingUser.password,
+      state: pendingUser.state,
+      district: pendingUser.district,
+      village: pendingUser.village,
+      farmSize: pendingUser.farmSize,
+      soilType: pendingUser.soilType,
+      primaryCrop: pendingUser.primaryCrop,
+      language: pendingUser.language,
+      role
+    });
+
+    await user.save();
+
+    // Clean up PendingUser
+    await PendingUser.deleteOne({ _id: pendingUser._id });
+
+    // Generate JWT
+    const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+
+    res.status(201).json({
+      success: true,
+      token,
+      user
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email address is required' });
+    }
+
+    // Check if user exists
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'No registered account found with this email address.' });
+    }
+
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+    // Rate Limiting (by email)
+    const hourlyCount = await OtpRequestLog.countDocuments({
+      mobile: email.toLowerCase().trim(),
+      requestedAt: { $gte: oneHourAgo }
+    });
+
+    if (hourlyCount >= 5) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many OTP requests. Maximum 5 requests per hour. Please try again later.'
+      });
+    }
+
+    const latestLog = await OtpRequestLog.findOne({ mobile: email.toLowerCase().trim() }).sort({ requestedAt: -1 });
+    if (latestLog) {
+      const timePassed = now.getTime() - latestLog.requestedAt.getTime();
+      if (timePassed < 60 * 1000) {
+        const secondsLeft = Math.ceil((60 * 1000 - timePassed) / 1000);
+        return res.status(429).json({
+          success: false,
+          message: `Please wait ${secondsLeft} seconds before requesting another OTP.`,
+          cooldownRemaining: secondsLeft
+        });
+      }
+    }
+
+    await new OtpRequestLog({ mobile: email.toLowerCase().trim(), requestedAt: now }).save();
+
+    // Generate OTP
+    const otp = generateNumericOTP();
+    const hashedOtp = hashOTP(otp);
+
+    // Send OTP to email
+    const delivered = await sendEmailOTP(email, otp);
+    if (!delivered) {
+      return res.status(500).json({
+        success: false,
+        message: 'Email delivery failed. Please verify the recipient email address.'
+      });
+    }
+
+    // Save/Upsert OTP in database
+    await Otp.deleteMany({ email: email.toLowerCase().trim() });
+    await new Otp({
+      email: email.toLowerCase().trim(),
+      otpHash: hashedOtp,
+      expiresAt: new Date(now.getTime() + 5 * 60 * 1000), // 5 mins expiry
+      attempts: 0
+    }).save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Verification OTP sent to your email.'
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Email, OTP, and new password are required' });
+    }
+
+    const now = new Date();
+    const storedOtp = await Otp.findOne({ email: email.toLowerCase().trim() });
+
+    if (!storedOtp) {
+      return res.status(400).json({ success: false, message: 'OTP has expired or was not requested.' });
+    }
+
+    if (storedOtp.expiresAt < now) {
+      await Otp.deleteOne({ _id: storedOtp._id });
+      return res.status(400).json({ success: false, message: 'OTP has expired.' });
+    }
+
+    if (storedOtp.attempts >= 5) {
+      await Otp.deleteOne({ _id: storedOtp._id });
+      return res.status(429).json({ success: false, message: 'Too many incorrect OTP attempts. Please request a new OTP.' });
+    }
+
+    const inputHash = hashOTP(otp);
+    if (storedOtp.otpHash !== inputHash) {
+      storedOtp.attempts += 1;
+      await storedOtp.save();
+      return res.status(400).json({ success: false, message: 'Invalid OTP code.' });
+    }
+
+    // OTP Verified! Find User and Update Password
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    user.password = hashedPassword;
+    await user.save();
+
+    // Clean up OTP record
+    await Otp.deleteOne({ _id: storedOtp._id });
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully. You can now login with your new password.'
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
