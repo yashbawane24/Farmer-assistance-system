@@ -6,7 +6,7 @@ import User from '../models/User';
 import Otp from '../models/Otp';
 import OtpRequestLog from '../models/OtpRequestLog';
 import { AuthRequest } from '../middleware/authMiddleware';
-import { sendSMS, sendEmailOTP } from '../utils/otpSender';
+import { sendEmailOTP } from '../utils/otpSender';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkeyforfarmerassistancesystem123!';
 
@@ -82,36 +82,25 @@ export const sendOTP = async (req: Request, res: Response) => {
     const otp = generateNumericOTP();
     const hashedOtp = hashOTP(otp);
 
-    // Delivery Flow: Email (Primary) -> Twilio SMS (Fallback) -> Developer Terminal Log (Fallback)
-    let delivered = false;
-    let deliveryMethod = 'email';
-
     // Find registered user's email or use input email
     const user = await User.findOne({ mobile });
     const emailToUse = email || user?.email;
 
-    if (emailToUse) {
-      delivered = await sendEmailOTP(emailToUse, otp);
+    if (!emailToUse) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email address is required to receive the OTP verification code.'
+      });
     }
 
-    // Fallback to Twilio SMS if email delivery fails or is not configured
-    if (!delivered) {
-      if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-        delivered = await sendSMS(mobile, `Your Smart Farmer System verification code is: ${otp}. Valid for 5 minutes.`);
-        deliveryMethod = 'sms';
-      }
-    }
+    // Attempt real Gmail SMTP email delivery
+    const delivered = await sendEmailOTP(emailToUse, otp);
 
-    // If both failed or are unconfigured, print to terminal console for local development testing
     if (!delivered) {
-      console.log('\n=============================================================');
-      console.log(`[OTP DEVELOPMENT BACKEND LOG] Generated OTP for ${mobile} is: ${otp}`);
-      if (emailToUse) {
-        console.log(`Target email: ${emailToUse}`);
-      }
-      console.log('=============================================================\n');
-      delivered = true;
-      deliveryMethod = 'console';
+      return res.status(500).json({
+        success: false,
+        message: 'SMTP email delivery failed. Please verify the SMTP configuration or check the recipient email address.'
+      });
     }
 
     // Save/Upsert hashed OTP in the database with 5-minute expiry
@@ -124,9 +113,7 @@ export const sendOTP = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: deliveryMethod === 'console'
-        ? 'OTP generated (logged to server console in development)'
-        : `OTP sent successfully via ${deliveryMethod}`
+      message: 'Verification OTP sent successfully to your email.'
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
