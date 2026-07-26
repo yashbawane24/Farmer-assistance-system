@@ -8,8 +8,8 @@ import { ThemeProvider } from './context/ThemeContext';
 import { AccessibilityProvider } from './context/AccessibilityContext';
 import { AuthProvider } from './context/AuthContext';
 
-// Set production API base URL dynamically or fall back to local backend port 5001
-axios.defaults.baseURL = (import.meta as any).env.VITE_API_URL || ((import.meta as any).env.DEV ? '' : 'http://localhost:5001');
+// Set production API base URL dynamically or fall back to local IP address on port 5001
+axios.defaults.baseURL = (import.meta as any).env.VITE_API_URL || ((import.meta as any).env.DEV ? '' : 'http://192.0.0.2:5001');
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
