@@ -40,8 +40,10 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, postman, etc.)
-    if (!origin) return callback(null, true);
+    // In development mode, bypass CORS checks to support local network device testing (e.g. mobile phones)
+    if (process.env.NODE_ENV !== 'production' || !origin) {
+      return callback(null, true);
+    }
     
     const isAllowed = allowedOrigins.some(allowedOrigin => {
       return origin === allowedOrigin || origin.startsWith(allowedOrigin);
@@ -50,6 +52,7 @@ app.use(cors({
     if (isAllowed) {
       callback(null, true);
     } else {
+      console.warn(`[CORS] Request origin blocked: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },

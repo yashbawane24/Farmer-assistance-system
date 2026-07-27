@@ -73,7 +73,7 @@ const LandingPage: React.FC = () => {
 
   const handleReadIntroduction = () => {
     readTextAloud(
-      t('landing.heroTitle') + ". " + t('landing.heroSubtitle') + " " + t('landing.accessDashboard')
+      t('landing.heroTitlePrimary', 'Empowering Farmers with') + " " + t('landing.heroTitleSecondary', 'Smart Decision Tools') + ". " + t('landing.heroSubtitle') + " " + t('landing.accessDashboard')
     );
   };
 
@@ -91,9 +91,9 @@ const LandingPage: React.FC = () => {
                 {t('landing.heroBadge')}
               </span>
               <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl text-slate-900 dark:text-white">
-                {t('landing.heroTitle').split('with')[0]} {t('landing.heroTitle').includes('with') && 'with'} <br />
+                {t('landing.heroTitlePrimary', 'Empowering Farmers with')} <br />
                 <span className="bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent">
-                  {t('landing.heroTitle').includes('with') ? t('landing.heroTitle').split('with')[1] : t('landing.heroTitle')}
+                  {t('landing.heroTitleSecondary', 'Smart Decision Tools')}
                 </span>
               </h1>
               <p className="max-w-2xl text-lg text-slate-600 dark:text-slate-300 mx-auto lg:mx-0">

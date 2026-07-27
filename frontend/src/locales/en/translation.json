@@ -29,7 +29,8 @@
   },
   "landing": {
     "heroBadge": "🌱 Premium Farming Assistant Portal",
-    "heroTitle": "Empowering Farmers with Smart Decision Tools",
+    "heroTitlePrimary": "Empowering Farmers with",
+    "heroTitleSecondary": "Smart Decision Tools",
     "heroSubtitle": "A simple, voice-assisted dashboard helping farmers maximize harvest yield, scan leaf diseases, analyze real-time market prices, and find government subsidies.",
     "accessDashboard": "Access Farmer Dashboard",
     "listenAloud": "Listen Aloud",
