@@ -8,6 +8,7 @@ import {
   MapPin, Sprout, KeyRound, Globe, ArrowRight, ArrowLeft,
   CheckCircle2, Sparkles, AlertCircle
 } from 'lucide-react';
+import { getErrorMessage } from '../utils/errorHelper';
 
 const IndianStates = [
   'Maharashtra', 'Madhya Pradesh', 'Uttar Pradesh', 'Rajasthan', 'Gujarat', 'Tamil Nadu', 'Punjab'
@@ -142,7 +143,7 @@ const Register: React.FC = () => {
       setCooldown(60);
       setStep(3);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to initialize registration. Email or mobile might already be in use.');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -162,7 +163,7 @@ const Register: React.FC = () => {
       await verifyRegisterOtp(email.toLowerCase().trim(), otp);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid verification OTP code. Please try again.');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -189,7 +190,7 @@ const Register: React.FC = () => {
       setCooldown(60);
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to resend OTP.');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

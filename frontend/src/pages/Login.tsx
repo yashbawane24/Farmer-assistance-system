@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Phone, Lock, Eye, EyeOff, LogIn, AlertCircle, Settings } from 'lucide-react';
-import axios from 'axios';
+import { motion } from 'framer-motion';
+import { Mail, Phone, Lock, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
+import { getErrorMessage } from '../utils/errorHelper';
 
 const Login: React.FC = () => {
   const { loginWithPassword } = useAuth();
@@ -20,29 +20,6 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // API Settings States
-  const [showSettings, setShowSettings] = useState(false);
-  const [apiUrlInput, setApiUrlInput] = useState(
-    localStorage.getItem('custom_api_url') || 'http://localhost:5001'
-  );
-  const [settingsSaved, setSettingsSaved] = useState(false);
-
-  const handleSaveSettings = () => {
-    const trimmed = apiUrlInput.trim();
-    if (trimmed) {
-      localStorage.setItem('custom_api_url', trimmed);
-      axios.defaults.baseURL = trimmed;
-    } else {
-      localStorage.removeItem('custom_api_url');
-      axios.defaults.baseURL = 'http://localhost:5001';
-    }
-    setSettingsSaved(true);
-    setTimeout(() => {
-      setSettingsSaved(false);
-      setShowSettings(false);
-    }, 1000);
-  };
 
   // Load Remember Me credentials on mount
   useEffect(() => {
@@ -80,7 +57,7 @@ const Login: React.FC = () => {
 
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid credentials or connection error.');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -94,85 +71,9 @@ const Login: React.FC = () => {
         transition={{ duration: 0.4 }}
         className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/20 bg-white/70 shadow-2xl backdrop-blur-xl p-8 dark:bg-slate-900/60 dark:border-slate-800/80"
       >
-        {/* API settings gear icon */}
-        <button
-          type="button"
-          onClick={() => setShowSettings(!showSettings)}
-          className="absolute top-6 right-6 p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 transition-colors z-10"
-          title="Connection Settings"
-        >
-          <Settings className="h-5 w-5" />
-        </button>
-
         {/* Decorative elements */}
         <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl" />
         <div className="absolute -left-10 -bottom-10 h-32 w-32 rounded-full bg-teal-500/10 blur-2xl" />
-
-        {/* Custom API settings overlay */}
-        <AnimatePresence>
-          {showSettings && (
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 15 }}
-              className="absolute inset-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-8 flex flex-col justify-between z-20"
-            >
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xl">⚙️</span>
-                  <h3 className="text-xl font-bold text-slate-800 dark:text-white">API Connection</h3>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
-                  By default, this site connects to the local backend on your laptop at <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-emerald-600 dark:text-emerald-400 font-mono">http://localhost:5001</code>.
-                  <br /><br />
-                  To log in from your mobile phone, or if you encounter connection errors on Vercel, enter a secure tunnel URL (e.g. from ngrok) or your laptop's Wi-Fi IP address.
-                </p>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Backend Endpoint URL</label>
-                    <input
-                      type="text"
-                      value={apiUrlInput}
-                      onChange={(e) => setApiUrlInput(e.target.value)}
-                      placeholder="e.g. http://localhost:5001"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 p-3 text-sm focus:border-emerald-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950/50 text-slate-800 dark:text-white"
-                    />
-                  </div>
-                  {settingsSaved && (
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">✓ Settings saved successfully!</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleSaveSettings}
-                  className="flex-1 rounded-xl bg-emerald-650 bg-emerald-600 p-3 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 transition-colors"
-                >
-                  Save Settings
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    localStorage.removeItem('custom_api_url');
-                    setApiUrlInput('http://localhost:5001');
-                    axios.defaults.baseURL = 'http://localhost:5001';
-                    setSettingsSaved(true);
-                    setTimeout(() => {
-                      setSettingsSaved(false);
-                      setShowSettings(false);
-                    }, 1000);
-                  }}
-                  className="rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3 text-sm font-semibold text-slate-600 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800"
-                >
-                  Reset
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Header */}
         <div className="relative text-center mb-8">

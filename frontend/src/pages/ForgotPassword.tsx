@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, KeyRound, Lock, Eye, EyeOff, CheckCircle2, ArrowRight, ArrowLeft, AlertCircle } from 'lucide-react';
+import { getErrorMessage } from '../utils/errorHelper';
 
 const ForgotPassword: React.FC = () => {
   const { forgotPassword, resetPassword } = useAuth();
@@ -49,7 +50,7 @@ const ForgotPassword: React.FC = () => {
       setCooldown(60);
       setStep(2);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to send verification OTP. Ensure your email is correct and registered.');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -80,7 +81,7 @@ const ForgotPassword: React.FC = () => {
         navigate('/login');
       }, 3000);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid or expired OTP code. Please try again.');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -94,7 +95,7 @@ const ForgotPassword: React.FC = () => {
       await forgotPassword(email.toLowerCase().trim());
       setCooldown(60);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to resend OTP.');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
