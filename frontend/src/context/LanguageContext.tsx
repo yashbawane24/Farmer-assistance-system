@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import i18n from 'i18next';
 
 export type Language = 'en' | 'hi' | 'ta' | 'mr';
@@ -50,17 +50,19 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return (saved as Language) || 'en';
   });
 
-  // Keep i18n language in sync with state
+  // Keep i18n language in sync with state on mount
   useEffect(() => {
     i18n.changeLanguage(language);
-  }, [language]);
+  }, []);
 
-  const setLanguage = (lang: Language) => {
+  const setLanguage = useCallback((lang: Language) => {
+    // Change language synchronously so it's ready when the React state update triggers a re-render
+    i18n.changeLanguage(lang);
     setLanguageState(lang);
     localStorage.setItem('farmer_language', lang);
-  };
+  }, []);
 
-  const t = (key: string, options?: any): string => {
+  const t = useCallback((key: string, options?: any): string => {
     const resolvedKey = legacyKeyMap[key] || key;
     const result = i18n.t(resolvedKey, options);
     
@@ -76,10 +78,16 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     
     // Fallback safely to key name rather than crashing with an object
     return key;
-  };
+  }, [language]);
+
+  const value = useMemo(() => ({
+    language,
+    setLanguage,
+    t
+  }), [language, setLanguage, t]);
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );
