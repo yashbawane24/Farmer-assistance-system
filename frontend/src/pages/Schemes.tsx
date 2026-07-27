@@ -30,7 +30,7 @@ const Schemes: React.FC = () => {
             setSelectedScheme(null);
           }
 
-          // Offline Cache mechanism: Write results to localStorage
+          // Offline Cache mechanism
           localStorage.setItem(`farmer_schemes_${category}_${search}`, JSON.stringify(res.data.data));
         }
       } catch (err) {
@@ -71,10 +71,10 @@ const Schemes: React.FC = () => {
       {/* Title Header */}
       <div>
         <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
-          <span>🏛️</span> {t('govtSchemesTitle')}
+          <span>🏛️</span> {t('schemes.title')}
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Find latest subsidies, loan products, crop insurances, and apply directly. Offline-enabled.
+          {t('schemes.desc')}
         </p>
       </div>
 
@@ -87,10 +87,10 @@ const Schemes: React.FC = () => {
             className={`px-4 py-2.5 rounded-full text-xs font-bold whitespace-nowrap border transition-all ${
               category === cat
                 ? 'border-primary-500 bg-primary-600 text-white shadow-sm'
-                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800'
+                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-355 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
-            {cat}
+            {t(`schemes.cat.${cat.toLowerCase().replace(' ', '')}`, cat)}
           </button>
         ))}
       </div>
@@ -105,7 +105,7 @@ const Schemes: React.FC = () => {
             </span>
             <input
               type="text"
-              placeholder={t('searchSchemes')}
+              placeholder={t('schemes.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full rounded-2xl border border-slate-300 pl-10 pr-4 py-3 dark:bg-slate-900 dark:border-slate-700 text-sm focus:ring-primary-500"
@@ -132,7 +132,9 @@ const Schemes: React.FC = () => {
                     }`}
                   >
                     <div className="space-y-1.5 max-w-[80%]">
-                      <span className="rounded bg-primary-100 dark:bg-primary-950 px-2 py-0.5 text-[10px] text-primary-800 dark:text-primary-400 font-bold uppercase tracking-wider">{scheme.category}</span>
+                      <span className="rounded bg-primary-100 dark:bg-primary-950 px-2 py-0.5 text-[10px] text-primary-800 dark:text-primary-400 font-bold uppercase tracking-wider">
+                        {t(`schemes.cat.${scheme.category.toLowerCase().replace(' ', '')}`, scheme.category)}
+                      </span>
                       <h3 className="text-base font-extrabold leading-tight">{scheme.title}</h3>
                       <p className="text-xs text-slate-500 line-clamp-1">{scheme.overview}</p>
                     </div>
@@ -145,7 +147,7 @@ const Schemes: React.FC = () => {
                             ? 'bg-amber-100 border-amber-300 text-amber-600 dark:bg-amber-950/40 dark:border-amber-900/30'
                             : 'border-slate-200 dark:border-slate-800 hover:bg-slate-100'
                         }`}
-                        title={isBookmarked(scheme._id) ? "Remove Bookmark" : "Bookmark Scheme"}
+                        title={isBookmarked(scheme._id) ? t('schemes.removeBookmark', 'Remove Bookmark') : t('schemes.bookmarkScheme', 'Bookmark Scheme')}
                       >
                         <Bookmark className="h-4 w-4" fill={isBookmarked(scheme._id) ? "currentColor" : "none"} />
                       </button>
@@ -154,7 +156,9 @@ const Schemes: React.FC = () => {
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-slate-500 py-8 text-center bg-white dark:bg-slate-900/35 rounded-3xl border border-slate-200 dark:border-slate-800">No schemes found matching the filters.</p>
+                <p className="text-sm text-slate-500 py-8 text-center bg-white dark:bg-slate-900/35 rounded-3xl border border-slate-200 dark:border-slate-800">
+                  {t('schemes.noSchemes')}
+                </p>
               )}
             </div>
           )}
@@ -167,7 +171,9 @@ const Schemes: React.FC = () => {
               
               <div className="flex justify-between items-start gap-4 border-b border-slate-100 dark:border-slate-850 pb-4">
                 <div className="space-y-1">
-                  <span className="rounded bg-primary-100 dark:bg-primary-950 px-2 py-0.5 text-xs text-primary-800 dark:text-primary-400 font-bold uppercase tracking-wider">{selectedScheme.category}</span>
+                  <span className="rounded bg-primary-100 dark:bg-primary-950 px-2 py-0.5 text-xs text-primary-800 dark:text-primary-400 font-bold uppercase tracking-wider">
+                    {t(`schemes.cat.${selectedScheme.category.toLowerCase().replace(' ', '')}`, selectedScheme.category)}
+                  </span>
                   <h2 className="text-xl font-extrabold leading-snug">{selectedScheme.title}</h2>
                 </div>
                 
@@ -178,6 +184,7 @@ const Schemes: React.FC = () => {
                       ? 'bg-amber-100 border-amber-300 text-amber-600 dark:bg-amber-950/40 dark:border-amber-900/30'
                       : 'border-slate-200 dark:border-slate-800 hover:bg-slate-100'
                   }`}
+                  title={isBookmarked(selectedScheme._id) ? t('schemes.removeBookmark', 'Remove Bookmark') : t('schemes.bookmarkScheme', 'Bookmark Scheme')}
                 >
                   <Bookmark className="h-5 w-5" fill={isBookmarked(selectedScheme._id) ? "currentColor" : "none"} />
                 </button>
@@ -185,7 +192,7 @@ const Schemes: React.FC = () => {
 
               {/* Overview */}
               <div className="space-y-1">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('schemeOverview')}</h4>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('schemes.overview')}</h4>
                 <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-350">{selectedScheme.overview}</p>
               </div>
 
@@ -194,7 +201,7 @@ const Schemes: React.FC = () => {
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                     <CheckCircle className="h-4 w-4 text-emerald-500" />
-                    {t('eligibilityCriteria')}
+                    {t('schemes.eligibility')}
                   </h4>
                   <ul className="text-xs space-y-2">
                     {selectedScheme.eligibility.map((el: string, idx: number) => (
@@ -208,7 +215,7 @@ const Schemes: React.FC = () => {
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                     <Award className="h-4 w-4 text-primary-500" />
-                    {t('schemeBenefits')}
+                    {t('schemes.benefits')}
                   </h4>
                   <ul className="text-xs space-y-2">
                     {selectedScheme.benefits.map((ben: string, idx: number) => (
@@ -225,7 +232,7 @@ const Schemes: React.FC = () => {
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                     <FileText className="h-4 w-4 text-indigo-500" />
-                    {t('documentsRequired')}
+                    {t('schemes.documents')}
                   </h4>
                   <ul className="text-xs space-y-1.5">
                     {selectedScheme.documentsRequired.map((doc: string, idx: number) => (
@@ -239,7 +246,7 @@ const Schemes: React.FC = () => {
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                     <Landmark className="h-4 w-4 text-amber-500" />
-                    Application Process
+                    {t('schemes.applicationProcess', 'Application Process')}
                   </h4>
                   <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
                     {selectedScheme.applicationProcess}
@@ -255,7 +262,7 @@ const Schemes: React.FC = () => {
                   rel="noopener noreferrer"
                   className="w-full text-center block rounded-xl bg-primary-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-primary-700 flex items-center justify-center gap-1.5"
                 >
-                  {t('applyNow')} <ExternalLink className="h-4 w-4" />
+                  {t('schemes.applyButton')} <ExternalLink className="h-4 w-4" />
                 </a>
               )}
 
@@ -263,8 +270,10 @@ const Schemes: React.FC = () => {
           ) : (
             <div className="glass-panel rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center space-y-4">
               <div className="text-5xl">🏛️</div>
-              <h3 className="text-lg font-bold">Select a Government Scheme.</h3>
-              <p className="text-sm text-slate-500 max-w-sm">Tap on a scheme listing card on the left panel to display detailed requirements and process details.</p>
+              <h3 className="text-lg font-bold">{t('schemes.selectScheme', 'Select a Government Scheme.')}</h3>
+              <p className="text-sm text-slate-500 max-w-sm">
+                {t('schemes.selectSchemeDesc', 'Tap on a scheme listing card on the left panel to display detailed requirements and process details.')}
+              </p>
             </div>
           )}
         </div>

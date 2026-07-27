@@ -23,7 +23,7 @@ const DiseaseDetection: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
-        setError('Please select an image file (PNG, JPG, or JPEG).');
+        setError(t('errors.invalidImage', 'Please select an image file (PNG, JPG, or JPEG).'));
         return;
       }
       setSelectedFile(file);
@@ -42,7 +42,7 @@ const DiseaseDetection: React.FC = () => {
     const file = e.dataTransfer.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
-        setError('Please drop a valid leaf image.');
+        setError(t('errors.invalidImageDrop', 'Please drop a valid leaf image.'));
         return;
       }
       setSelectedFile(file);
@@ -54,7 +54,7 @@ const DiseaseDetection: React.FC = () => {
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) {
-      setError('Please upload or snap a leaf photo first.');
+      setError(t('errors.uploadPhotoFirst', 'Please upload or snap a leaf photo first.'));
       return;
     }
 
@@ -92,14 +92,14 @@ const DiseaseDetection: React.FC = () => {
         if (response.data.success) {
           setReport(response.data.data);
         } else {
-          setError('Foliage analysis failed.');
+          setError(t('disease.failedAnalysis', 'Foliage analysis failed.'));
         }
         setLoading(false);
       }, 400);
 
     } catch (err: any) {
       clearInterval(interval);
-      setError(err.response?.data?.message || 'Server error uploading crop leaf photo.');
+      setError(err.response?.data?.message || t('disease.serverError', 'Server error uploading crop leaf photo.'));
       setLoading(false);
     }
   };
@@ -117,29 +117,30 @@ const DiseaseDetection: React.FC = () => {
     doc.setTextColor(255, 255, 255);
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(22);
-    doc.text('Smart Farmer Assistance System', 15, 18);
+    doc.text(t('common.brandName') + ' Assistance Portal', 15, 18);
+    
     doc.setFontSize(12);
     doc.setFont('Helvetica', 'normal');
-    doc.text('Crop Disease Diagnostic Report', 15, 26);
+    doc.text(t('disease.pdfSubtitle', 'Crop Disease Diagnostic Report'), 15, 26);
 
     doc.setTextColor(33, 41, 54);
     
     // Details Grid
     doc.setFontSize(14);
     doc.setFont('Helvetica', 'bold');
-    doc.text('Diagnosis Summary', 15, 50);
+    doc.text(t('disease.diagnosisSummary', 'Diagnosis Summary'), 15, 50);
     
     doc.setFontSize(11);
     doc.setFont('Helvetica', 'normal');
-    doc.text(`Crop Category: ${report.cropType}`, 15, 60);
-    doc.text(`Identified Disease: ${report.diseaseName}`, 15, 67);
-    doc.text(`Confidence Rating: ${report.confidence}%`, 15, 74);
-    doc.text(`Date of Scan: ${new Date(report.createdAt).toLocaleString()}`, 15, 81);
+    doc.text(`${t('disease.cropCategory', 'Crop Category')}: ${report.cropType}`, 15, 60);
+    doc.text(`${t('disease.identifiedDisease', 'Identified Disease')}: ${report.diseaseName}`, 15, 67);
+    doc.text(`${t('disease.confidenceRating', 'Confidence Rating')}: ${report.confidence}%`, 15, 74);
+    doc.text(`${t('disease.dateOfScan', 'Date of Scan')}: ${new Date(report.createdAt).toLocaleString()}`, 15, 81);
 
     // Symptoms Section
     doc.setFontSize(14);
     doc.setFont('Helvetica', 'bold');
-    doc.text('Symptoms Identified', 15, 95);
+    doc.text(t('disease.symptoms'), 15, 95);
     doc.setFontSize(11);
     doc.setFont('Helvetica', 'normal');
     let yPos = 103;
@@ -152,7 +153,7 @@ const DiseaseDetection: React.FC = () => {
     yPos += 4;
     doc.setFontSize(14);
     doc.setFont('Helvetica', 'bold');
-    doc.text('Primary Causes', 15, yPos);
+    doc.text(t('disease.causes'), 15, yPos);
     doc.setFontSize(11);
     doc.setFont('Helvetica', 'normal');
     yPos += 8;
@@ -165,11 +166,11 @@ const DiseaseDetection: React.FC = () => {
     yPos += 4;
     doc.setFontSize(14);
     doc.setFont('Helvetica', 'bold');
-    doc.text('Recommended Actions & Remedies', 15, yPos);
+    doc.text(t('disease.actionsRemedies', 'Recommended Actions & Remedies'), 15, yPos);
     
     doc.setFontSize(12);
     doc.setFont('Helvetica', 'bold');
-    doc.text('Organic Remedies:', 15, yPos + 8);
+    doc.text(t('disease.organicRemedy') + ':', 15, yPos + 8);
     doc.setFontSize(11);
     doc.setFont('Helvetica', 'normal');
     yPos += 14;
@@ -181,7 +182,7 @@ const DiseaseDetection: React.FC = () => {
     yPos += 2;
     doc.setFontSize(12);
     doc.setFont('Helvetica', 'bold');
-    doc.text('Chemical Pesticides:', 15, yPos);
+    doc.text(t('disease.chemicalPesticide') + ':', 15, yPos);
     doc.setFontSize(11);
     doc.setFont('Helvetica', 'normal');
     yPos += 6;
@@ -193,7 +194,7 @@ const DiseaseDetection: React.FC = () => {
     // Footer copyright
     doc.setFontSize(9);
     doc.setTextColor(150, 150, 150);
-    doc.text('Report compiled by Smart Farmer AI diagnostic engine. Visit portal for live help desk lines.', 15, 280);
+    doc.text(t('disease.pdfFooter', 'Report compiled by Smart Farmer AI diagnostic engine. Visit portal for live help desk lines.'), 15, 280);
 
     doc.save(`Disease-Report-${report.cropType}.pdf`);
   };
@@ -204,10 +205,10 @@ const DiseaseDetection: React.FC = () => {
       {/* Title Header */}
       <div>
         <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
-          <span>🛡️</span> {t('diseaseScanTitle')}
+          <span>🛡️</span> {t('disease.title')}
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Upload leaf images to diagnose fungal, bacterial, or viral crop diseases instantly.
+          {t('disease.desc')}
         </p>
       </div>
 
@@ -216,10 +217,14 @@ const DiseaseDetection: React.FC = () => {
         {/* Left Side: Upload Panel */}
         <div className="lg:col-span-5 space-y-4">
           <form onSubmit={handleScan} className="glass-panel p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-5 shadow-sm">
-            <h3 className="text-lg font-bold border-b border-slate-100 dark:border-slate-850 pb-2">Diagnostic Scan</h3>
+            <h3 className="text-lg font-bold border-b border-slate-100 dark:border-slate-850 pb-2">
+              {t('disease.diagnosticScan', 'Diagnostic Scan')}
+            </h3>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-400 mb-2">Select Crop Type</label>
+              <label className="block text-xs font-bold uppercase text-slate-400 mb-2">
+                {t('disease.selectCrop', 'Select Crop Type')}
+              </label>
               <div className="grid grid-cols-4 gap-1.5">
                 {CropsList.map((crop) => (
                   <button
@@ -257,13 +262,17 @@ const DiseaseDetection: React.FC = () => {
                     alt="Leaf upload preview"
                     className="mx-auto h-36 w-full object-cover rounded-xl shadow-sm"
                   />
-                  <span className="text-xs font-semibold text-slate-500 block">Click or drag files to replace leaf photo</span>
+                  <span className="text-xs font-semibold text-slate-500 block">
+                    {t('disease.replacePhoto', 'Click or drag files to replace leaf photo')}
+                  </span>
                 </div>
               ) : (
                 <div className="space-y-2 py-4 flex flex-col items-center">
                   <Upload className="h-10 w-10 text-slate-400" />
-                  <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">{t('uploadPrompt')}</h4>
-                  <p className="text-xs text-slate-400">Supports PNG, JPG, or JPEG up to 5MB</p>
+                  <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">{t('disease.uploadPrompt')}</h4>
+                  <p className="text-xs text-slate-400">
+                    {t('disease.supportsFiles', 'Supports PNG, JPG, or JPEG up to 5MB')}
+                  </p>
                 </div>
               )}
             </div>
@@ -278,7 +287,7 @@ const DiseaseDetection: React.FC = () => {
               className="w-full rounded-xl bg-primary-600 py-3.5 text-sm font-bold text-white shadow-md hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center gap-1.5"
             >
               <Camera className="h-4 w-4" />
-              {loading ? `Analyzing leaf... ${progress}%` : t('scanAnalyze')}
+              {loading ? `${t('disease.analyzing', 'Analyzing leaf...')} ${progress}%` : t('disease.btnScan')}
             </button>
           </form>
         </div>
@@ -293,8 +302,8 @@ const DiseaseDetection: React.FC = () => {
                 <div className="absolute inset-0 rounded-full border-4 border-primary-500 border-t-transparent animate-spin"></div>
                 <span className="text-xs font-bold text-slate-650">{progress}%</span>
               </div>
-              <h3 className="text-lg font-bold">Scanning Crop Tissue</h3>
-              <p className="text-sm text-slate-500 max-w-xs">AI diagnostic engine is cross-checking cell structures against pathogen records.</p>
+              <h3 className="text-lg font-bold">{t('disease.scanningTissue', 'Scanning Crop Tissue')}</h3>
+              <p className="text-sm text-slate-500 max-w-xs">{t('disease.scanningDesc', 'AI diagnostic engine is cross-checking cell structures against pathogen records.')}</p>
             </div>
           )}
 
@@ -306,14 +315,14 @@ const DiseaseDetection: React.FC = () => {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse"></span>
-                    <span className="text-xs font-bold text-rose-500 uppercase tracking-widest">{t('diagnosisResult')}</span>
+                    <span className="text-xs font-bold text-rose-500 uppercase tracking-widest">{t('disease.resultsTitle')}</span>
                   </div>
                   <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">{report.diseaseName}</h2>
                   <p className="text-xs text-slate-500">Pathogen detected on {report.cropType} leaves</p>
                 </div>
                 
                 <div className="text-right sm:text-right shrink-0">
-                  <span className="text-xs text-slate-400 block mb-0.5">Confidence Rating</span>
+                  <span className="text-xs text-slate-400 block mb-0.5">{t('disease.confidenceRating')}</span>
                   <span className="rounded-full bg-emerald-100 dark:bg-emerald-950 px-3.5 py-1 text-sm font-extrabold text-emerald-800 dark:text-emerald-400">
                     {report.confidence}%
                   </span>
@@ -325,7 +334,7 @@ const DiseaseDetection: React.FC = () => {
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                     <AlertOctagon className="h-4 w-4 text-amber-500" />
-                    {t('symptoms')}
+                    {t('disease.symptoms')}
                   </h4>
                   <ul className="text-xs space-y-2 leading-relaxed">
                     {report.symptoms.map((s: string, idx: number) => (
@@ -339,7 +348,7 @@ const DiseaseDetection: React.FC = () => {
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                     <Info className="h-4 w-4 text-blue-500" />
-                    {t('causes')}
+                    {t('disease.causes')}
                   </h4>
                   <ul className="text-xs space-y-2 leading-relaxed">
                     {report.causes.map((c: string, idx: number) => (
@@ -355,12 +364,12 @@ const DiseaseDetection: React.FC = () => {
 
               {/* Remedy Toggles */}
               <div className="space-y-4">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Treatment Plan</h3>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">{t('disease.treatmentPlan', 'Treatment Plan')}</h3>
                 
                 <div className="grid gap-4 sm:grid-cols-3">
                   
                   <div className="p-4 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/15 border border-emerald-100/50 dark:border-emerald-900/20 space-y-2">
-                    <span className="text-xs font-bold text-emerald-800 dark:text-emerald-400 block">{t('organicRemedy')}</span>
+                    <span className="text-xs font-bold text-emerald-800 dark:text-emerald-400 block">{t('disease.organicRemedy')}</span>
                     <ul className="text-[11px] space-y-1.5 leading-relaxed text-slate-700 dark:text-slate-350">
                       {report.treatment.organic.map((org: string, idx: number) => (
                         <li key={idx}>• {org}</li>
@@ -369,8 +378,8 @@ const DiseaseDetection: React.FC = () => {
                   </div>
 
                   <div className="p-4 rounded-2xl bg-blue-50/40 dark:bg-blue-950/15 border border-blue-100/50 dark:border-blue-900/20 space-y-2">
-                    <span className="text-xs font-bold text-blue-800 dark:text-blue-400 block">{t('chemicalPesticide')}</span>
-                    <ul className="text-[11px] space-y-1.5 leading-relaxed text-slate-700 dark:text-slate-350">
+                    <span className="text-xs font-bold text-blue-800 dark:text-blue-400 block">{t('disease.chemicalPesticide')}</span>
+                    <ul className="text-[11px] space-y-1.5 leading-relaxed text-slate-700 dark:text-slate-355">
                       {report.treatment.chemical.map((chem: string, idx: number) => (
                         <li key={idx}>• {chem}</li>
                       ))}
@@ -378,7 +387,7 @@ const DiseaseDetection: React.FC = () => {
                   </div>
 
                   <div className="p-4 rounded-2xl bg-purple-50/40 dark:bg-purple-950/15 border border-purple-100/50 dark:border-purple-900/20 space-y-2">
-                    <span className="text-xs font-bold text-purple-800 dark:text-purple-400 block">{t('preventionTips')}</span>
+                    <span className="text-xs font-bold text-purple-800 dark:text-purple-400 block">{t('disease.preventionTips')}</span>
                     <ul className="text-[11px] space-y-1.5 leading-relaxed text-slate-700 dark:text-slate-355">
                       {report.treatment.prevention.map((prev: string, idx: number) => (
                         <li key={idx}>• {prev}</li>
@@ -396,7 +405,7 @@ const DiseaseDetection: React.FC = () => {
                   className="flex-1 rounded-xl bg-primary-600 py-3 text-sm font-bold text-white shadow-sm hover:bg-primary-700 flex items-center justify-center gap-1.5"
                 >
                   <FileText className="h-4 w-4" />
-                  {t('downloadPdf')}
+                  {t('disease.downloadPdf')}
                 </button>
                 <button
                   onClick={() => { setSelectedFile(null); setPreviewUrl(null); setReport(null); }}
@@ -412,8 +421,10 @@ const DiseaseDetection: React.FC = () => {
           {!report && !loading && (
             <div className="glass-panel rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center space-y-4">
               <div className="text-5xl">🛡️</div>
-              <h3 className="text-lg font-bold">No disease scan performed yet.</h3>
-              <p className="text-sm text-slate-500 max-w-sm">Select crop, upload a leafy photo on the left panel, and tap Scan to execute AI diagnostics.</p>
+              <h3 className="text-lg font-bold">{t('disease.noScanPerformed', 'No disease scan performed yet.')}</h3>
+              <p className="text-sm text-slate-500 max-w-sm">
+                {t('disease.noScanDesc', 'Select crop, upload a leafy photo on the left panel, and tap Scan to execute AI diagnostics.')}
+              </p>
             </div>
           )}
 

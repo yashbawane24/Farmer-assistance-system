@@ -212,9 +212,9 @@ const Register: React.FC = () => {
               {t('createAccount')}
             </h2>
             <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
-              {step === 1 && 'Let\'s set up your profile credentials'}
-              {step === 2 && 'Complete your farm details for smart advice'}
-              {step === 3 && `Enter the OTP sent to ${email}`}
+              {step === 1 && t('register.subtitle1')}
+              {step === 2 && t('register.subtitle2')}
+              {step === 3 && `${t('register.subtitle3')} (${email})`}
             </p>
           </div>
 
@@ -267,7 +267,7 @@ const Register: React.FC = () => {
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Full Name</label>
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{t('register.fullName')}</label>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                         <UserIcon className="h-5 w-5" />
@@ -284,7 +284,7 @@ const Register: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Mobile Number</label>
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{t('register.mobile')}</label>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                         <Phone className="h-5 w-5" />
@@ -302,7 +302,7 @@ const Register: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Email Address</label>
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{t('register.email')}</label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                       <Mail className="h-5 w-5" />
@@ -320,7 +320,7 @@ const Register: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Password</label>
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{t('register.password')}</label>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                         <Lock className="h-5 w-5" />
@@ -373,7 +373,7 @@ const Register: React.FC = () => {
                     type="submit"
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 active:scale-95 transition-all"
                   >
-                    <span>Continue to Farm Setup</span>
+                    <span>{t('register.continueToFarm', 'Continue to Farm Setup')}</span>
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>
@@ -427,14 +427,14 @@ const Register: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{t('villageLabel')}</label>
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{t('common.villageLabel')}</label>
                     <input
                       required
                       type="text"
-                      placeholder="Village Name"
+                      placeholder={t('common.villageLabel')}
                       value={village}
                       onChange={(e) => setVillage(e.target.value)}
-                      className="w-full rounded-2xl border border-slate-200 bg-white/50 px-4 py-3 text-sm dark:bg-slate-900/40 dark:border-slate-800 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
+                      className="w-full rounded-2xl border border-slate-200 bg-white/50 pl-4 pr-4 py-3 text-sm dark:bg-slate-900/40 dark:border-slate-800 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -511,7 +511,7 @@ const Register: React.FC = () => {
                     className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/50 px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 active:scale-95 transition-all"
                   >
                     <ArrowLeft className="h-4 w-4" />
-                    <span>Back</span>
+                    <span>{t('common.back')}</span>
                   </button>
                   <button
                     type="submit"
@@ -522,7 +522,7 @@ const Register: React.FC = () => {
                       <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     ) : (
                       <>
-                        <span>Submit & Verify Email</span>
+                        <span>{t('register.submitVerify', 'Submit & Verify Email')}</span>
                         <ArrowRight className="h-4 w-4" />
                       </>
                     )}
@@ -543,13 +543,12 @@ const Register: React.FC = () => {
                 <div className="text-center bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-500/10 rounded-2xl p-5 mb-2">
                   <Sparkles className="h-6 w-6 text-emerald-500 mx-auto mb-2" />
                   <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                    A 6-digit verification code was sent to <strong className="text-emerald-600 dark:text-emerald-400 font-bold">{email}</strong>.
+                    {t('register.otpSent')}
                   </p>
-                  <p className="text-xs text-slate-400 mt-1">Please check your inbox or spam folder.</p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">6-Digit Verification Code</label>
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{t('forgotPassword.otpCode')}</label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                       <KeyRound className="h-5 w-5" />
@@ -558,7 +557,7 @@ const Register: React.FC = () => {
                       required
                       type="text"
                       maxLength={6}
-                      placeholder="000000"
+                      placeholder={t('register.otpPlaceholder')}
                       value={otp}
                       onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       className="w-full rounded-2xl border border-slate-200 bg-white/50 pl-11 pr-4 py-3.5 text-center text-lg font-bold tracking-widest dark:bg-slate-900/40 dark:border-slate-800 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
@@ -577,7 +576,7 @@ const Register: React.FC = () => {
                     ) : (
                       <>
                         <CheckCircle2 className="h-4 w-4" />
-                        <span>Verify & Create Account</span>
+                        <span>{t('register.otpVerify')}</span>
                       </>
                     )}
                   </button>
@@ -588,7 +587,7 @@ const Register: React.FC = () => {
                     onClick={handleResendOTP}
                     className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline py-2 disabled:opacity-50 disabled:no-underline"
                   >
-                    {cooldown > 0 ? `Resend code in ${cooldown} seconds` : 'Did not receive code? Resend OTP'}
+                    {cooldown > 0 ? t('register.otpCooldown', { cooldown }) : t('register.otpResend')}
                   </button>
                 </div>
               </motion.form>
@@ -598,9 +597,9 @@ const Register: React.FC = () => {
           {/* Footer Link */}
           <div className="mt-8 text-center border-t border-slate-100 dark:border-slate-850 pt-5">
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Already have an account?{' '}
+              {t('login.dontHaveAccount')}{' '}
               <Link to="/login" className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline">
-                {t('signIn')}
+                {t('common.signIn')}
               </Link>
             </p>
           </div>

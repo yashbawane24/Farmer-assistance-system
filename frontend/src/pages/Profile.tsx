@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { MapPin, Sprout, Landmark, User, Save, RefreshCw } from 'lucide-react';
+import { MapPin, Sprout, Landmark, User, Save } from 'lucide-react';
 
 const IndianStates = [
   'Maharashtra', 'Madhya Pradesh', 'Uttar Pradesh', 'Rajasthan', 'Gujarat', 'Tamil Nadu', 'Punjab'
@@ -19,7 +19,7 @@ const DistrictsByState: Record<string, string[]> = {
 
 const Profile: React.FC = () => {
   const { user, updateProfileData } = useAuth();
-  const { t, setLanguage } = useLanguage();
+  const { t } = useLanguage();
 
   const [name, setName] = useState(user?.name || '');
   const [state, setState] = useState(user?.state || 'Maharashtra');
@@ -47,9 +47,9 @@ const Profile: React.FC = () => {
         farmSize: farmSize ? parseFloat(farmSize) : undefined,
         primaryCrop
       });
-      setMsg('Profile details updated successfully.');
+      setMsg(t('profile.updateSuccess'));
     } catch (error: any) {
-      setErr('Failed to save profile changes.');
+      setErr(t('profile.updateError'));
     } finally {
       setLoading(false);
     }
@@ -61,10 +61,10 @@ const Profile: React.FC = () => {
       {/* Title Header */}
       <div>
         <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
-          <span>👤</span> {t('profile')}
+          <span>👤</span> {t('common.profile')}
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Modify name, local address details, and farm sizes to update system parameters.
+          {t('profile.desc')}
         </p>
       </div>
 
@@ -83,20 +83,31 @@ const Profile: React.FC = () => {
             <p className="text-xs text-slate-400 font-semibold">{user?.mobile}</p>
           </div>
           <hr className="border-slate-100 dark:border-slate-850" />
-          <div className="text-left text-xs space-y-2.5 text-slate-650 dark:text-slate-350">
-            <p><strong className="text-slate-400 block mb-0.5">Role Level:</strong> <span className="capitalize font-bold text-primary-600 dark:text-primary-400">{user?.role}</span></p>
-            <p><strong className="text-slate-400 block mb-0.5">State & Dist:</strong> {user?.district}, {user?.state}</p>
-            <p><strong className="text-slate-400 block mb-0.5">Registered Crop:</strong> {user?.primaryCrop || 'Not configured'}</p>
+          <div className="text-left text-xs space-y-2.5 text-slate-650 dark:text-slate-355">
+            <p>
+              <strong className="text-slate-400 block mb-0.5">{t('profile.roleLevel', 'Role Level:')}</strong> 
+              <span className="capitalize font-bold text-primary-600 dark:text-primary-400">{user?.role}</span>
+            </p>
+            <p>
+              <strong className="text-slate-400 block mb-0.5">{t('profile.stateAndDist', 'State & Dist:')}</strong> 
+              {user?.district}, {user?.state}
+            </p>
+            <p>
+              <strong className="text-slate-400 block mb-0.5">{t('profile.registeredCrop', 'Registered Crop:')}</strong> 
+              {user?.primaryCrop || t('profile.notConfigured', 'Not configured')}
+            </p>
           </div>
         </div>
 
         {/* Right Side Editing Form */}
         <div className="md:col-span-8">
           <form onSubmit={handleUpdate} className="glass-panel p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-5 shadow-md">
-            <h3 className="text-lg font-bold border-b border-slate-100 dark:border-slate-850 pb-2">Profile Configuration</h3>
+            <h3 className="text-lg font-bold border-b border-slate-100 dark:border-slate-850 pb-2">
+              {t('profile.titleConfig', 'Profile Configuration')}
+            </h3>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-400 mb-1">Full Name</label>
+              <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{t('register.fullName')}</label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                   <User className="h-5 w-5" />
@@ -113,7 +124,7 @@ const Profile: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-400 mb-1">State</label>
+                <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{t('common.stateLabel')}</label>
                 <select
                   value={state}
                   onChange={(e) => {
@@ -130,7 +141,7 @@ const Profile: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-400 mb-1">District</label>
+                <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{t('common.districtLabel')}</label>
                 <select
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
@@ -144,7 +155,7 @@ const Profile: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-400 mb-1">Village Name</label>
+              <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{t('common.villageLabel')}</label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                   <MapPin className="h-5 w-5" />
@@ -161,7 +172,7 @@ const Profile: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-400 mb-1 font-sans">Farm Size (Acres)</label>
+                <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{t('common.farmSizeLabel')}</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                     <Landmark className="h-5 w-5" />
@@ -177,7 +188,7 @@ const Profile: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-400 mb-1">Primary Crop</label>
+                <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{t('common.primaryCropLabel')}</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                     <Sprout className="h-5 w-5" />
@@ -198,7 +209,7 @@ const Profile: React.FC = () => {
               className="w-full rounded-xl bg-primary-600 py-3 text-sm font-bold text-white shadow-md hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center gap-1.5"
             >
               <Save className="h-4 w-4" />
-              {loading ? 'Saving Profile...' : 'Save Profile Changes'}
+              {loading ? t('common.loading') : t('profile.saveButton')}
             </button>
           </form>
         </div>

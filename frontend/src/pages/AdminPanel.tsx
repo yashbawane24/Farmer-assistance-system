@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 import axios from 'axios';
 import { Users, BookOpen, AlertTriangle, ShieldCheck, Plus, Trash2, LayoutGrid, Radio, PlusCircle, TrendingUp } from 'lucide-react';
 import { Bar, Pie } from 'react-chartjs-2';
@@ -16,6 +17,7 @@ import {
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
 const AdminPanel: React.FC = () => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'analytics' | 'farmers' | 'schemes' | 'prices' | 'broadcast'>('analytics');
   
   // Data States
@@ -79,12 +81,12 @@ const AdminPanel: React.FC = () => {
   }, []);
 
   const handleDeleteFarmer = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this farmer profile?')) return;
+    if (!window.confirm(t('admin.confirmDeleteFarmer', 'Are you sure you want to delete this farmer profile?'))) return;
     try {
       const res = await axios.delete(`/api/admin/farmers/${id}`);
       if (res.data.success) {
         setFarmers(farmers.filter((f) => f._id !== id));
-        alert('Farmer profile deleted successfully.');
+        alert(t('admin.deleteSuccess', 'Farmer profile deleted successfully.'));
       }
     } catch (err) {
       console.error(err);
@@ -106,7 +108,7 @@ const AdminPanel: React.FC = () => {
 
       const res = await axios.post('/api/admin/schemes', processedScheme);
       if (res.data.success) {
-        setFormMsg('Government Scheme added successfully.');
+        setFormMsg(t('admin.schemeAddSuccess', 'Government Scheme added successfully.'));
         setSchemeForm({
           title: '',
           category: 'Financial Assistance',
@@ -119,7 +121,7 @@ const AdminPanel: React.FC = () => {
         });
       }
     } catch (err: any) {
-      setFormErr(err.response?.data?.message || 'Failed to submit scheme.');
+      setFormErr(err.response?.data?.message || t('admin.schemeAddFailed', 'Failed to submit scheme.'));
     }
   };
 
@@ -131,7 +133,7 @@ const AdminPanel: React.FC = () => {
     try {
       const res = await axios.post('/api/admin/market-prices', priceForm);
       if (res.data.success) {
-        setFormMsg('Market price listing added successfully.');
+        setFormMsg(t('admin.priceAddSuccess', 'Market price listing added successfully.'));
         setPriceForm({
           cropName: '',
           marketName: '',
@@ -142,7 +144,7 @@ const AdminPanel: React.FC = () => {
         });
       }
     } catch (err: any) {
-      setFormErr(err.response?.data?.message || 'Failed to submit prices.');
+      setFormErr(err.response?.data?.message || t('admin.priceAddFailed', 'Failed to submit prices.'));
     }
   };
 
@@ -154,7 +156,7 @@ const AdminPanel: React.FC = () => {
     try {
       const res = await axios.post('/api/admin/broadcast', broadcastForm);
       if (res.data.success) {
-        setFormMsg('System alert broadcast successfully to all dashboards.');
+        setFormMsg(t('admin.broadcastSuccess', 'System alert broadcast successfully to all dashboards.'));
         setBroadcastForm({
           title: '',
           message: '',
@@ -162,7 +164,7 @@ const AdminPanel: React.FC = () => {
         });
       }
     } catch (err: any) {
-      setFormErr(err.response?.data?.message || 'Failed to broadcast warning.');
+      setFormErr(err.response?.data?.message || t('admin.broadcastFailed', 'Failed to broadcast warning.'));
     }
   };
 
@@ -173,7 +175,7 @@ const AdminPanel: React.FC = () => {
       labels: analytics.popularCrops.map((c: any) => c.crop),
       datasets: [
         {
-          label: 'Farmers Count',
+          label: t('admin.farmersCount', 'Farmers Count'),
           data: analytics.popularCrops.map((c: any) => c.count),
           backgroundColor: ['#22c55e', '#3b82f6', '#eab308', '#a855f7', '#f43f5e'],
           borderRadius: 8
@@ -199,7 +201,7 @@ const AdminPanel: React.FC = () => {
     return (
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 text-center">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary-500 border-t-transparent mx-auto"></div>
-        <p className="text-sm text-slate-500 mt-4">Loading Admin Control Panel...</p>
+        <p className="text-sm text-slate-500 mt-4">{t('admin.loadingText', 'Loading Admin Control Panel...')}</p>
       </div>
     );
   }
@@ -210,20 +212,30 @@ const AdminPanel: React.FC = () => {
       {/* Title Header */}
       <div>
         <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
-          <span>🛡️</span> Admin Management Panel
+          <span>🛡️</span> {t('admin.title', 'Admin Management Panel')}
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Monitor crop disease analytics, publish mandi prices, add scheme cards, and broadcast alerts.
+          {t('admin.desc', 'Monitor crop disease analytics, publish mandi prices, add scheme cards, and broadcast alerts.')}
         </p>
       </div>
 
       {/* Tabs list */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide border-b border-slate-200 dark:border-slate-800">
-        <button onClick={() => { setActiveTab('analytics'); setFormMsg(''); setFormErr(''); }} className={`px-4 py-2 text-sm font-bold border-b-2 whitespace-nowrap transition-all ${activeTab === 'analytics' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>Analytics & Stats</button>
-        <button onClick={() => { setActiveTab('farmers'); setFormMsg(''); setFormErr(''); }} className={`px-4 py-2 text-sm font-bold border-b-2 whitespace-nowrap transition-all ${activeTab === 'farmers' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>Manage Farmers</button>
-        <button onClick={() => { setActiveTab('schemes'); setFormMsg(''); setFormErr(''); }} className={`px-4 py-2 text-sm font-bold border-b-2 whitespace-nowrap transition-all ${activeTab === 'schemes' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>Add Scheme</button>
-        <button onClick={() => { setActiveTab('prices'); setFormMsg(''); setFormErr(''); }} className={`px-4 py-2 text-sm font-bold border-b-2 whitespace-nowrap transition-all ${activeTab === 'prices' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>Mandi Rates</button>
-        <button onClick={() => { setActiveTab('broadcast'); setFormMsg(''); setFormErr(''); }} className={`px-4 py-2 text-sm font-bold border-b-2 whitespace-nowrap transition-all ${activeTab === 'broadcast' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>Broadcast Alerts</button>
+        <button onClick={() => { setActiveTab('analytics'); setFormMsg(''); setFormErr(''); }} className={`px-4 py-2 text-sm font-bold border-b-2 whitespace-nowrap transition-all ${activeTab === 'analytics' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>
+          {t('admin.tabAnalytics', 'Analytics & Stats')}
+        </button>
+        <button onClick={() => { setActiveTab('farmers'); setFormMsg(''); setFormErr(''); }} className={`px-4 py-2 text-sm font-bold border-b-2 whitespace-nowrap transition-all ${activeTab === 'farmers' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>
+          {t('admin.tabFarmers', 'Manage Farmers')}
+        </button>
+        <button onClick={() => { setActiveTab('schemes'); setFormMsg(''); setFormErr(''); }} className={`px-4 py-2 text-sm font-bold border-b-2 whitespace-nowrap transition-all ${activeTab === 'schemes' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>
+          {t('admin.tabAddScheme', 'Add Scheme')}
+        </button>
+        <button onClick={() => { setActiveTab('prices'); setFormMsg(''); setFormErr(''); }} className={`px-4 py-2 text-sm font-bold border-b-2 whitespace-nowrap transition-all ${activeTab === 'prices' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>
+          {t('admin.tabMandiRates', 'Mandi Rates')}
+        </button>
+        <button onClick={() => { setActiveTab('broadcast'); setFormMsg(''); setFormErr(''); }} className={`px-4 py-2 text-sm font-bold border-b-2 whitespace-nowrap transition-all ${activeTab === 'broadcast' ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>
+          {t('admin.tabBroadcast', 'Broadcast Alerts')}
+        </button>
       </div>
 
       {formMsg && <div className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400">{formMsg}</div>}
@@ -239,7 +251,7 @@ const AdminPanel: React.FC = () => {
                 <Users className="h-6 w-6" />
               </div>
               <div>
-                <span className="text-xs text-slate-400 font-bold uppercase">Total Farmers</span>
+                <span className="text-xs text-slate-400 font-bold uppercase">{t('admin.statFarmers', 'Total Farmers')}</span>
                 <h3 className="text-2xl font-extrabold">{analytics.totalFarmers}</h3>
               </div>
             </div>
@@ -249,7 +261,7 @@ const AdminPanel: React.FC = () => {
                 <ShieldCheck className="h-6 w-6" />
               </div>
               <div>
-                <span className="text-xs text-slate-400 font-bold uppercase">Active Portals</span>
+                <span className="text-xs text-slate-400 font-bold uppercase">{t('admin.statPortals', 'Active Portals')}</span>
                 <h3 className="text-2xl font-extrabold">{analytics.activeUsers}</h3>
               </div>
             </div>
@@ -259,7 +271,7 @@ const AdminPanel: React.FC = () => {
                 <AlertTriangle className="h-6 w-6" />
               </div>
               <div>
-                <span className="text-xs text-slate-400 font-bold uppercase">Disease Scans</span>
+                <span className="text-xs text-slate-400 font-bold uppercase">{t('admin.statScans', 'Disease Scans')}</span>
                 <h3 className="text-2xl font-extrabold">6</h3>
               </div>
             </div>
@@ -269,7 +281,7 @@ const AdminPanel: React.FC = () => {
                 <BookOpen className="h-6 w-6" />
               </div>
               <div>
-                <span className="text-xs text-slate-400 font-bold uppercase">Govt Schemes</span>
+                <span className="text-xs text-slate-400 font-bold uppercase">{t('admin.statSchemes', 'Govt Schemes')}</span>
                 <h3 className="text-2xl font-extrabold">4</h3>
               </div>
             </div>
@@ -279,14 +291,14 @@ const AdminPanel: React.FC = () => {
           <div className="grid gap-6 md:grid-cols-2">
             
             <div className="glass-panel p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md space-y-4">
-              <h3 className="text-lg font-bold">Popular Cultivated Crops</h3>
+              <h3 className="text-lg font-bold">{t('admin.popularCropsTitle', 'Popular Cultivated Crops')}</h3>
               <div className="h-64 relative w-full">
                 {getCropsChartData() && <Bar data={getCropsChartData()!} options={{ responsive: true, maintainAspectRatio: false }} />}
               </div>
             </div>
 
             <div className="glass-panel p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md space-y-4">
-              <h3 className="text-lg font-bold">Reported Disease Pathogens</h3>
+              <h3 className="text-lg font-bold">{t('admin.diseasePathogensTitle', 'Reported Disease Pathogens')}</h3>
               <div className="h-64 relative w-full flex justify-center">
                 {getDiseasesChartData() && <Pie data={getDiseasesChartData()!} options={{ responsive: true, maintainAspectRatio: false }} />}
               </div>
@@ -303,10 +315,10 @@ const AdminPanel: React.FC = () => {
             <table className="w-full text-left text-sm border-collapse">
               <thead>
                 <tr className="bg-slate-100/50 dark:bg-slate-900/40 text-slate-500 text-xs font-bold border-b border-slate-150">
-                  <th className="p-4">Farmer Details</th>
-                  <th className="p-4">Address Info</th>
-                  <th className="p-4">Farm Details</th>
-                  <th className="p-4 text-center">Delete</th>
+                  <th className="p-4">{t('admin.tblFarmerDetails', 'Farmer Details')}</th>
+                  <th className="p-4">{t('admin.tblAddressInfo', 'Address Info')}</th>
+                  <th className="p-4">{t('admin.tblFarmDetails', 'Farm Details')}</th>
+                  <th className="p-4 text-center">{t('common.delete', 'Delete')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
@@ -321,8 +333,8 @@ const AdminPanel: React.FC = () => {
                         {farmer.village}, {farmer.district}, {farmer.state}
                       </td>
                       <td className="p-4">
-                        <span className="font-semibold">{farmer.farmSize || 'N/A'} Acres</span>
-                        <span className="text-xs text-slate-400 block">Primary Crop: {farmer.primaryCrop || 'None'}</span>
+                        <span className="font-semibold">{farmer.farmSize || 'N/A'} {t('common.farmSizeLabel')}</span>
+                        <span className="text-xs text-slate-400 block">{t('common.primaryCropLabel')}: {farmer.primaryCrop || t('common.none')}</span>
                       </td>
                       <td className="p-4 text-center">
                         <button
@@ -336,7 +348,7 @@ const AdminPanel: React.FC = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={4} className="p-8 text-center text-slate-500">No registered farmers profiles.</td>
+                    <td colSpan={4} className="p-8 text-center text-slate-500">{t('admin.noFarmers', 'No registered farmers profiles.')}</td>
                   </tr>
                 )}
               </tbody>
@@ -348,77 +360,77 @@ const AdminPanel: React.FC = () => {
       {/* Tab Contents: Add Scheme Form */}
       {activeTab === 'schemes' && (
         <form onSubmit={handleAddScheme} className="glass-panel p-6 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-2xl mx-auto space-y-4 shadow-sm">
-          <h3 className="text-lg font-bold border-b pb-2 flex items-center gap-1.5"><PlusCircle className="h-5 w-5 text-primary-500" /> Publish Government Scheme</h3>
+          <h3 className="text-lg font-bold border-b pb-2 flex items-center gap-1.5"><PlusCircle className="h-5 w-5 text-primary-500" /> {t('admin.publishScheme', 'Publish Government Scheme')}</h3>
           
           <div>
-            <label className="block text-xs font-bold uppercase mb-1">Scheme Title</label>
+            <label className="block text-xs font-bold uppercase mb-1">{t('admin.schemeTitle', 'Scheme Title')}</label>
             <input required type="text" placeholder="PM Krishi Sinchayee Yojana" value={schemeForm.title} onChange={(e) => setSchemeForm({ ...schemeForm, title: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm" />
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase mb-1">Category</label>
+              <label className="block text-xs font-bold uppercase mb-1">{t('admin.schemeCategory', 'Category')}</label>
               <select value={schemeForm.category} onChange={(e) => setSchemeForm({ ...schemeForm, category: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm">
-                <option value="Financial Assistance">Financial Assistance</option>
-                <option value="Crop Insurance">Crop Insurance</option>
-                <option value="Agricultural Credit">Agricultural Credit</option>
-                <option value="Soil Care">Soil Care</option>
+                <option value="Financial Assistance">{t('schemes.cat.financialassistance', 'Financial Assistance')}</option>
+                <option value="Crop Insurance">{t('schemes.cat.cropinsurance', 'Crop Insurance')}</option>
+                <option value="Agricultural Credit">{t('schemes.cat.agriculturalcredit', 'Agricultural Credit')}</option>
+                <option value="Soil Care">{t('schemes.cat.soilcare', 'Soil Care')}</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase mb-1">External Link</label>
+              <label className="block text-xs font-bold uppercase mb-1">{t('admin.schemeExternalLink', 'External Link')}</label>
               <input type="url" placeholder="https://pmksy.gov.in" value={schemeForm.link} onChange={(e) => setSchemeForm({ ...schemeForm, link: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm" />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase mb-1">Overview</label>
+            <label className="block text-xs font-bold uppercase mb-1">{t('schemes.overview', 'Overview')}</label>
             <textarea required rows={3} placeholder="Brief summary details about scheme objectives..." value={schemeForm.overview} onChange={(e) => setSchemeForm({ ...schemeForm, overview: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm"></textarea>
           </div>
 
           <div className="grid sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase mb-1">Eligibility (Line separated)</label>
+              <label className="block text-xs font-bold uppercase mb-1">{t('schemes.eligibility', 'Eligibility')} ({t('admin.lineSeparated', 'Line separated')})</label>
               <textarea rows={4} placeholder="Line 1&#10;Line 2" value={schemeForm.eligibility} onChange={(e) => setSchemeForm({ ...schemeForm, eligibility: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-xs"></textarea>
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase mb-1">Benefits (Line separated)</label>
+              <label className="block text-xs font-bold uppercase mb-1">{t('schemes.benefits', 'Benefits')} ({t('admin.lineSeparated', 'Line separated')})</label>
               <textarea rows={4} placeholder="Line 1&#10;Line 2" value={schemeForm.benefits} onChange={(e) => setSchemeForm({ ...schemeForm, benefits: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-xs"></textarea>
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase mb-1">Documents (Line separated)</label>
+              <label className="block text-xs font-bold uppercase mb-1">{t('schemes.documents', 'Documents')} ({t('admin.lineSeparated', 'Line separated')})</label>
               <textarea rows={4} placeholder="Line 1&#10;Line 2" value={schemeForm.documentsRequired} onChange={(e) => setSchemeForm({ ...schemeForm, documentsRequired: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-xs"></textarea>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase mb-1">Application Process</label>
+            <label className="block text-xs font-bold uppercase mb-1">{t('schemes.applicationProcess', 'Application Process')}</label>
             <textarea required rows={2} placeholder="Instructions on how to enroll..." value={schemeForm.applicationProcess} onChange={(e) => setSchemeForm({ ...schemeForm, applicationProcess: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm"></textarea>
           </div>
 
-          <button type="submit" className="w-full rounded-xl bg-primary-600 py-3 text-sm font-bold text-white shadow-md hover:bg-primary-700">Add Scheme</button>
+          <button type="submit" className="w-full rounded-xl bg-primary-600 py-3 text-sm font-bold text-white shadow-md hover:bg-primary-700">{t('admin.btnPublishScheme', 'Add Scheme')}</button>
         </form>
       )}
 
       {/* Tab Contents: Publish Mandi Prices */}
       {activeTab === 'prices' && (
         <form onSubmit={handleAddPrice} className="glass-panel p-6 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-xl mx-auto space-y-4 shadow-sm">
-          <h3 className="text-lg font-bold border-b pb-2 flex items-center gap-1.5"><TrendingUp className="h-5 w-5 text-primary-500" /> Update Mandi Crop Price</h3>
+          <h3 className="text-lg font-bold border-b pb-2 flex items-center gap-1.5"><TrendingUp className="h-5 w-5 text-primary-500" /> {t('admin.updateMandiPrice', 'Update Mandi Crop Price')}</h3>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase mb-1">Crop Name</label>
+              <label className="block text-xs font-bold uppercase mb-1">{t('mandi.crop', 'Crop')}</label>
               <input required type="text" placeholder="Cotton" value={priceForm.cropName} onChange={(e) => setPriceForm({ ...priceForm, cropName: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm" />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase mb-1">Mandi Name</label>
+              <label className="block text-xs font-bold uppercase mb-1">{t('mandi.mandi', 'Mandi')}</label>
               <input required type="text" placeholder="Yavatmal Mandi" value={priceForm.marketName} onChange={(e) => setPriceForm({ ...priceForm, marketName: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm" />
             </div>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase mb-1">State</label>
+              <label className="block text-xs font-bold uppercase mb-1">{t('common.stateLabel', 'State')}</label>
               <select value={priceForm.state} onChange={(e) => setPriceForm({ ...priceForm, state: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm">
                 <option value="Maharashtra">Maharashtra</option>
                 <option value="Madhya Pradesh">Madhya Pradesh</option>
@@ -427,52 +439,52 @@ const AdminPanel: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase mb-1">District</label>
+              <label className="block text-xs font-bold uppercase mb-1">{t('common.districtLabel', 'District')}</label>
               <input required type="text" placeholder="Yavatmal" value={priceForm.district} onChange={(e) => setPriceForm({ ...priceForm, district: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm" />
             </div>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase mb-1">Today\'s Price (₹/Quintal)</label>
+              <label className="block text-xs font-bold uppercase mb-1">{t('admin.todayPricePerQuintal', "Today's Price (₹/Quintal)")}</label>
               <input required type="number" placeholder="7150" value={priceForm.todayPrice} onChange={(e) => setPriceForm({ ...priceForm, todayPrice: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm" />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase mb-1">Yesterday\'s Price (₹/Quintal)</label>
+              <label className="block text-xs font-bold uppercase mb-1">{t('admin.yesterdayPricePerQuintal', "Yesterday's Price (₹/Quintal)")}</label>
               <input required type="number" placeholder="7200" value={priceForm.yesterdayPrice} onChange={(e) => setPriceForm({ ...priceForm, yesterdayPrice: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm" />
             </div>
           </div>
 
-          <button type="submit" className="w-full rounded-xl bg-primary-600 py-3 text-sm font-bold text-white shadow-md hover:bg-primary-700">Add price listing</button>
+          <button type="submit" className="w-full rounded-xl bg-primary-600 py-3 text-sm font-bold text-white shadow-md hover:bg-primary-700">{t('admin.btnAddPrice', 'Add price listing')}</button>
         </form>
       )}
 
       {/* Tab Contents: Broadcast warnings */}
       {activeTab === 'broadcast' && (
         <form onSubmit={handleBroadcast} className="glass-panel p-6 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-xl mx-auto space-y-4 shadow-sm">
-          <h3 className="text-lg font-bold border-b pb-2 flex items-center gap-1.5"><Radio className="h-5 w-5 text-rose-500" /> Broadcast System Alert</h3>
+          <h3 className="text-lg font-bold border-b pb-2 flex items-center gap-1.5"><Radio className="h-5 w-5 text-rose-500" /> {t('admin.broadcastAlertTitle', 'Broadcast System Alert')}</h3>
 
           <div>
-            <label className="block text-xs font-bold uppercase mb-1">Alert Title</label>
+            <label className="block text-xs font-bold uppercase mb-1">{t('admin.alertTitleLabel', 'Alert Title')}</label>
             <input required type="text" placeholder="Cyclone warning or price surge alert..." value={broadcastForm.title} onChange={(e) => setBroadcastForm({ ...broadcastForm, title: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm" />
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase mb-1">Alert Category</label>
+            <label className="block text-xs font-bold uppercase mb-1">{t('admin.alertCategoryLabel', 'Alert Category')}</label>
             <select value={broadcastForm.type} onChange={(e) => setBroadcastForm({ ...broadcastForm, type: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm">
-              <option value="weather">Weather Alert</option>
-              <option value="scheme">Govt Scheme Alert</option>
-              <option value="market">Market Rate Alert</option>
-              <option value="admin">General Broadcast</option>
+              <option value="weather">{t('admin.alertCatWeather', 'Weather Alert')}</option>
+              <option value="scheme">{t('admin.alertCatScheme', 'Govt Scheme Alert')}</option>
+              <option value="market">{t('admin.alertCatMarket', 'Market Rate Alert')}</option>
+              <option value="admin">{t('admin.alertCatGeneral', 'General Broadcast')}</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase mb-1">Alert Message</label>
+            <label className="block text-xs font-bold uppercase mb-1">{t('admin.alertMessageLabel', 'Alert Message')}</label>
             <textarea required rows={4} placeholder="Type the warning message that will be broadcasted to all logged-in farmers..." value={broadcastForm.message} onChange={(e) => setBroadcastForm({ ...broadcastForm, message: e.target.value })} className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm"></textarea>
           </div>
 
-          <button type="submit" className="w-full rounded-xl bg-rose-600 py-3 text-sm font-bold text-white shadow-md hover:bg-rose-700">Broadcast Alert Now</button>
+          <button type="submit" className="w-full rounded-xl bg-rose-600 py-3 text-sm font-bold text-white shadow-md hover:bg-rose-700">{t('admin.btnBroadcastNow', 'Broadcast Alert Now')}</button>
         </form>
       )}
 

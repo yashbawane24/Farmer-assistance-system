@@ -35,12 +35,12 @@ const Login: React.FC = () => {
     setError('');
 
     if (!identifier.trim()) {
-      setError('Please enter your email address or mobile number.');
+      setError(t('errors.emailRequired'));
       return;
     }
 
     if (!password) {
-      setError('Please enter your password.');
+      setError(t('errors.passwordRequired'));
       return;
     }
 
@@ -57,7 +57,15 @@ const Login: React.FC = () => {
 
       navigate('/dashboard');
     } catch (err: any) {
-      setError(getErrorMessage(err));
+      const errMsg = getErrorMessage(err);
+      // Map common error messages if backend returns them
+      if (errMsg.includes('Invalid credentials')) {
+        setError(t('errors.invalidCredentials'));
+      } else if (errMsg.includes('Backend unavailable') || errMsg.includes('Connection error')) {
+        setError(t('errors.connectionError'));
+      } else {
+        setError(errMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -79,10 +87,10 @@ const Login: React.FC = () => {
         <div className="relative text-center mb-8">
           <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-2xl dark:bg-emerald-500/20">🌱</span>
           <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-800 dark:text-white">
-            {t('signIn')}
+            {t('common.signIn')}
           </h2>
           <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
-            Welcome back! Enter credentials to access your farm dashboard
+            {t('login.welcomeBack')}
           </p>
         </div>
 
@@ -101,7 +109,7 @@ const Login: React.FC = () => {
         {/* Form */}
         <form onSubmit={handleLoginSubmit} className="space-y-5 relative">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Email Address or Mobile</label>
+            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{t('login.emailOrMobile')}</label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                 {identifier.includes('@') ? <Mail className="h-5 w-5" /> : <Phone className="h-5 w-5" />}
@@ -109,7 +117,7 @@ const Login: React.FC = () => {
               <input
                 required
                 type="text"
-                placeholder="farmer@example.com or 9876543210"
+                placeholder="farmer@example.com / 9876543210"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 className="w-full rounded-2xl border border-slate-200 bg-white/50 pl-11 pr-4 py-3 text-sm dark:bg-slate-900/40 dark:border-slate-800 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
@@ -119,12 +127,12 @@ const Login: React.FC = () => {
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Password</label>
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('login.password')}</label>
               <Link 
                 to="/forgot-password" 
                 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
               >
-                {t('forgotPasswordLabel')}
+                {t('common.forgotPasswordLabel')}
               </Link>
             </div>
             <div className="relative">
@@ -157,7 +165,7 @@ const Login: React.FC = () => {
                 onChange={(e) => setRememberMe(e.target.checked)}
                 className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4 bg-white/50 border-slate-200 dark:bg-slate-900 dark:border-slate-800"
               />
-              <span className="text-xs text-slate-600 dark:text-slate-400 font-semibold">{t('rememberMe')}</span>
+              <span className="text-xs text-slate-600 dark:text-slate-400 font-semibold">{t('common.rememberMe')}</span>
             </label>
           </div>
 
@@ -172,7 +180,7 @@ const Login: React.FC = () => {
               ) : (
                 <>
                   <LogIn className="h-4 w-4" />
-                  <span>Sign In</span>
+                  <span>{t('login.signIn')}</span>
                 </>
               )}
             </button>
@@ -182,9 +190,9 @@ const Login: React.FC = () => {
         {/* Create Account Link */}
         <div className="mt-8 text-center border-t border-slate-100 dark:border-slate-850 pt-5">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Don't have an account?{' '}
+            {t('login.dontHaveAccount')}{' '}
             <Link to="/register" className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline">
-              {t('createAccount')}
+              {t('login.registerLink')}
             </Link>
           </p>
         </div>

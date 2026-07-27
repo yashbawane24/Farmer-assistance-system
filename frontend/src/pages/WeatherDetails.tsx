@@ -25,10 +25,10 @@ const WeatherDetails: React.FC = () => {
         if (response.data.success) {
           setWeather(response.data.data);
         } else {
-          setError('Failed to load weather forecast.');
+          setError(t('weather.failedLoad', 'Failed to load weather forecast.'));
         }
       } catch (err: any) {
-        setError('Error establishing connection with weather servers.');
+        setError(t('weather.connectError', 'Error establishing connection with weather servers.'));
       } finally {
         setLoading(false);
       }
@@ -80,7 +80,7 @@ const WeatherDetails: React.FC = () => {
             <span>🌦️</span> {t('weatherDetails')}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Live forecasting details for {user?.district}, {user?.state}
+            {t('weather.liveForecastFor', 'Live forecasting details for')} {user?.district}, {user?.state}
           </p>
         </div>
         <button
@@ -88,7 +88,7 @@ const WeatherDetails: React.FC = () => {
           className="flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100"
         >
           <RefreshCw className="h-3.5 w-3.5" />
-          Refresh Weather
+          {t('weather.refreshWeather', 'Refresh Weather')}
         </button>
       </div>
 
@@ -168,7 +168,7 @@ const WeatherDetails: React.FC = () => {
             <div className="glass-panel p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4">
               <h3 className="text-lg font-bold flex items-center gap-1.5 text-primary-600 dark:text-primary-400">
                 <Sparkles className="h-5 w-5 animate-pulse" />
-                Agricultural Advisories & Recommendations
+                {t('weather.advisoryLabel', 'Agronomic Advisories')}
               </h3>
               <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
                 {weather.advisories.message}
@@ -186,7 +186,7 @@ const WeatherDetails: React.FC = () => {
                     <h4 className="text-sm font-bold">{t('irrigationOk')}</h4>
                   </div>
                   <span className="text-xs text-slate-500 mt-2">
-                    {weather.advisories.suitableForIrrigation ? 'Recommended' : 'Postpone Irrigation'}
+                    {weather.advisories.suitableForIrrigation ? t('weather.recommended', 'Recommended') : t('weather.postponeIrrigation', 'Postpone Irrigation')}
                   </span>
                 </div>
 
@@ -200,7 +200,7 @@ const WeatherDetails: React.FC = () => {
                     <h4 className="text-sm font-bold">{t('harvestOk')}</h4>
                   </div>
                   <span className="text-xs text-slate-500 mt-2">
-                    {weather.advisories.harvestToday ? 'Excellent Conditions' : 'Delay Harvesting'}
+                    {weather.advisories.harvestToday ? t('weather.excellentConditions', 'Excellent Conditions') : t('weather.delayHarvesting', 'Delay Harvesting')}
                   </span>
                 </div>
 
@@ -214,7 +214,7 @@ const WeatherDetails: React.FC = () => {
                     <h4 className="text-sm font-bold">{t('sprayAvoid')}</h4>
                   </div>
                   <span className="text-xs text-slate-500 mt-2">
-                    {weather.advisories.avoidPesticideSpraying ? 'High Risk' : 'Safe to Spray'}
+                    {weather.advisories.avoidPesticideSpraying ? t('weather.highRisk', 'High Risk') : t('weather.safeToSpray', 'Safe to Spray')}
                   </span>
                 </div>
 
@@ -243,7 +243,7 @@ const WeatherDetails: React.FC = () => {
                     <div className="text-right">
                       <span className="font-bold">{day.tempMax}°</span>
                       <span className="text-xs text-slate-400 ml-1">/{day.tempMin}°</span>
-                      <p className="text-[10px] text-primary-600 font-bold dark:text-primary-400">{day.rainChance}% rain</p>
+                      <p className="text-[10px] text-primary-600 font-bold dark:text-primary-400">{day.rainChance}% {t('weather.rain', 'rain')}</p>
                     </div>
                   </div>
                 </div>

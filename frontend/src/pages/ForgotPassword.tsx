@@ -40,7 +40,7 @@ const ForgotPassword: React.FC = () => {
     setError('');
 
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) {
-      setError('Please enter a valid email address.');
+      setError(t('errors.invalidEmail'));
       return;
     }
 
@@ -61,22 +61,22 @@ const ForgotPassword: React.FC = () => {
     setError('');
 
     if (otp.length < 6) {
-      setError('Please enter a valid 6-digit OTP code.');
+      setError(t('errors.invalidOtp', { defaultValue: 'Please enter a valid 6-digit OTP code.' }));
       return;
     }
     if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters long.');
+      setError(t('errors.passwordTooShort'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError(t('errors.passwordsMismatch'));
       return;
     }
 
     setLoading(true);
     try {
       await resetPassword(email.toLowerCase().trim(), otp, newPassword);
-      setSuccess('Your password has been successfully reset! Redirecting to login page...');
+      setSuccess(t('forgotPassword.successMessage'));
       setTimeout(() => {
         navigate('/login');
       }, 3000);
@@ -117,10 +117,10 @@ const ForgotPassword: React.FC = () => {
         <div className="relative text-center mb-8">
           <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-2xl dark:bg-emerald-500/20">🔑</span>
           <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-800 dark:text-white">
-            Reset Password
+            {t('forgotPassword.title')}
           </h2>
           <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
-            {step === 1 ? 'Enter your registered email address to receive an OTP' : `Enter code and choose your new password`}
+            {step === 1 ? t('forgotPassword.subtitle1') : t('forgotPassword.subtitle2')}
           </p>
         </div>
 
@@ -159,7 +159,7 @@ const ForgotPassword: React.FC = () => {
               className="space-y-5"
             >
               <div>
-                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Registered Email Address</label>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{t('forgotPassword.email')}</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                     <Mail className="h-5 w-5" />
@@ -185,7 +185,7 @@ const ForgotPassword: React.FC = () => {
                     <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   ) : (
                     <>
-                      <span>Send Recovery OTP</span>
+                      <span>{t('forgotPassword.sendOtp')}</span>
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
@@ -204,7 +204,7 @@ const ForgotPassword: React.FC = () => {
               className="space-y-5"
             >
               <div>
-                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Verification Code</label>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{t('forgotPassword.otpCode')}</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                     <KeyRound className="h-5 w-5" />
@@ -213,7 +213,7 @@ const ForgotPassword: React.FC = () => {
                     required
                     type="text"
                     maxLength={6}
-                    placeholder="Enter 6-digit OTP"
+                    placeholder={t('register.otpPlaceholder')}
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     className="w-full rounded-2xl border border-slate-200 bg-white/50 pl-11 pr-4 py-3 text-center text-sm font-bold tracking-widest dark:bg-slate-900/40 dark:border-slate-800 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
@@ -222,7 +222,7 @@ const ForgotPassword: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">New Password</label>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{t('forgotPassword.newPassword')}</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                     <Lock className="h-5 w-5" />
@@ -246,7 +246,7 @@ const ForgotPassword: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{t('confirmPassword')}</label>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{t('common.confirmPassword')}</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                     <Lock className="h-5 w-5" />
@@ -280,7 +280,7 @@ const ForgotPassword: React.FC = () => {
                   ) : (
                     <>
                       <CheckCircle2 className="h-4 w-4" />
-                      <span>Reset Password</span>
+                      <span>{t('forgotPassword.resetButton')}</span>
                     </>
                   )}
                 </button>
@@ -292,7 +292,7 @@ const ForgotPassword: React.FC = () => {
                     className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 py-2"
                   >
                     <ArrowLeft className="h-3 w-3" />
-                    <span>Back</span>
+                    <span>{t('common.back')}</span>
                   </button>
                   <button
                     type="button"
@@ -300,7 +300,7 @@ const ForgotPassword: React.FC = () => {
                     onClick={handleResendOTP}
                     className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline py-2 disabled:opacity-50 disabled:no-underline"
                   >
-                    {cooldown > 0 ? `Resend OTP in ${cooldown}s` : 'Resend OTP'}
+                    {cooldown > 0 ? t('register.otpCooldown', { cooldown }) : t('register.otpResend')}
                   </button>
                 </div>
               </div>
@@ -312,7 +312,7 @@ const ForgotPassword: React.FC = () => {
         <div className="mt-8 text-center border-t border-slate-100 dark:border-slate-850 pt-5">
           <Link to="/login" className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline text-sm flex items-center justify-center gap-1.5">
             <ArrowLeft className="h-4 w-4" />
-            <span>Back to Sign In</span>
+            <span>{t('forgotPassword.backToLogin')}</span>
           </Link>
         </div>
       </motion.div>

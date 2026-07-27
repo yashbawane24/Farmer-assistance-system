@@ -77,18 +77,26 @@ const Dashboard: React.FC = () => {
 
   const handleReadAdvisory = () => {
     if (weather) {
-      readTextAloud(`Weather advisory for ${user?.district}. ${weather.advisories.message}`);
+      readTextAloud(`${t('dashboard.todayAdvisory')}: ${weather.advisories.message}`);
     } else {
-      readTextAloud('Advisory details are loading.');
+      readTextAloud(t('dashboard.advisoryLoading', 'Advisory details are loading.'));
     }
   };
 
   // Setup sample data for price trends chart
   const chartData = {
-    labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Today'],
+    labels: [
+      t('dashboard.day1', 'Day 1'),
+      t('dashboard.day2', 'Day 2'),
+      t('dashboard.day3', 'Day 3'),
+      t('dashboard.day4', 'Day 4'),
+      t('dashboard.day5', 'Day 5'),
+      t('dashboard.day6', 'Day 6'),
+      t('dashboard.today', 'Today')
+    ],
     datasets: [
       {
-        label: 'Wheat (INR/Quintal)',
+        label: t('dashboard.chartLabel', 'Wheat (INR/Quintal)'),
         data: [2380, 2390, 2410, 2400, 2415, 2420, 2450],
         borderColor: '#10b981',
         backgroundColor: 'rgba(16, 185, 129, 0.1)',
@@ -141,10 +149,10 @@ const Dashboard: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight">
-            {t('welcomeBack')} {user?.name}
+            {t('dashboard.welcome', 'Welcome back,')} {user?.name}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Location: {user?.village}, {user?.district}, {user?.state} | Primary Crop: {user?.primaryCrop || 'None'}
+            {t('common.villageLabel')}: {user?.village}, {t('common.districtLabel')}: {user?.district}, {t('common.stateLabel')}: {user?.state} | {t('common.primaryCropLabel')}: {user?.primaryCrop || t('common.none', 'None')}
           </p>
         </div>
         <button
@@ -152,7 +160,7 @@ const Dashboard: React.FC = () => {
           className="flex self-start items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100"
         >
           <RefreshCw className="h-3.5 w-3.5" />
-          Refresh Dashboard
+          {t('dashboard.refreshDashboard', 'Refresh Dashboard')}
         </button>
       </div>
 
@@ -199,12 +207,12 @@ const Dashboard: React.FC = () => {
                   onClick={handleReadAdvisory}
                   className="flex items-center justify-center gap-1.5 self-start rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-primary-700"
                 >
-                  🔊 Listen Advisory
+                  🔊 {t('dashboard.listenAdvisory', 'Listen Advisory')}
                 </button>
               </div>
             </div>
           ) : (
-            <p className="text-sm">No weather forecast records available.</p>
+            <p className="text-sm">{t('dashboard.noWeather', 'No weather forecast records available.')}</p>
           )}
         </div>
 
@@ -259,9 +267,9 @@ const Dashboard: React.FC = () => {
         {/* Mandi Prices & Analytics Chart */}
         <div className="md:col-span-8 rounded-3xl glass-panel p-6 border border-slate-200 dark:border-slate-800 space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold">Mandi Price Trends (Wheat)</h3>
+            <h3 className="text-lg font-bold">{t('dashboard.mandiTrends', 'Mandi Price Trends (Wheat)')}</h3>
             <Link to="/market-prices" className="text-xs font-bold text-primary-600 dark:text-primary-400 flex items-center gap-1 hover:underline">
-              Full Comparison <ExternalLink className="h-3 w-3" />
+              {t('dashboard.fullComparison', 'Full Comparison')} <ExternalLink className="h-3 w-3" />
             </Link>
           </div>
           <div className="h-60 relative w-full">
@@ -275,7 +283,7 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-850 pb-2">
               <h3 className="text-lg font-bold flex items-center gap-1.5">
                 <Bell className="h-5 w-5 text-amber-500" />
-                Alerts & Reminders
+                {t('dashboard.alertsTitle', 'Alerts & Reminders')}
               </h3>
             </div>
             
@@ -299,7 +307,7 @@ const Dashboard: React.FC = () => {
                             onClick={() => handleMarkAsRead(notif._id)}
                             className="text-[10px] font-bold text-primary-600 dark:text-primary-400 hover:underline shrink-0"
                           >
-                            Mark Read
+                            {t('dashboard.markRead', 'Mark Read')}
                           </button>
                         )}
                       </div>
@@ -308,7 +316,7 @@ const Dashboard: React.FC = () => {
                   </div>
                 ))
               ) : (
-                <p className="text-xs text-slate-500 py-4 text-center">All caught up! No recent notifications.</p>
+                <p className="text-xs text-slate-500 py-4 text-center">{t('dashboard.noNotifications', 'All caught up! No recent notifications.')}</p>
               )}
             </div>
           </div>
@@ -317,7 +325,7 @@ const Dashboard: React.FC = () => {
             to="/help-center"
             className="mt-4 block text-center rounded-xl bg-slate-100 dark:bg-slate-800 p-2.5 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700"
           >
-            Help Center FAQs
+            {t('dashboard.helpCenterLink', 'Help Center FAQs')}
           </Link>
         </div>
 

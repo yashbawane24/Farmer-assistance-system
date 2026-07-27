@@ -14,56 +14,56 @@ const LandingPage: React.FC = () => {
   const features = [
     {
       icon: Cloud,
-      title: 'Smart Weather Forecast',
-      desc: 'Real-time weather insights, rain percentage, and actionable farm advisories to schedule irrigation, harvesting, and pest control.'
+      title: t('landing.featWeatherTitle'),
+      desc: t('landing.featWeatherDesc')
     },
     {
       icon: Sprout,
-      title: 'Crop Recommendation',
-      desc: 'Advanced agricultural suggestion engine matching your local state, district, soil type, and budget with high-yield crops.'
+      title: t('landing.featCropTitle'),
+      desc: t('landing.featCropDesc')
     },
     {
       icon: ShieldAlert,
-      title: 'AI Crop Disease Scanner',
-      desc: 'Scan crops with your smartphone camera to diagnose diseases instantly, complete with organic remedies and prevention advice.'
+      title: t('landing.featDiseaseTitle'),
+      desc: t('landing.featDiseaseDesc')
     },
     {
       icon: IndianRupee,
-      title: 'Live Mandi Prices',
-      desc: 'Track live crop prices in your nearby markets and compare mandi rates to sell your agricultural yield at peak profit.'
+      title: t('landing.featMandiTitle'),
+      desc: t('landing.featMandiDesc')
     }
   ];
 
   const benefits = [
     {
       icon: Volume2,
-      title: 'Voice Assistant Support',
-      desc: 'Farmers can navigate the entire system and listen to weather forecasts or government schemes read aloud in English, Hindi, Tamil, and Marathi.'
+      title: t('landing.accVoiceTitle'),
+      desc: t('landing.accVoiceDesc')
     },
     {
       icon: ShieldCheck,
-      title: 'Easy to Use & Accessible',
-      desc: 'Custom UI optimized for elder accessibility with options for large font sizes, high-contrast themes, and intuitive grid layouts.'
+      title: t('landing.accEaseTitle'),
+      desc: t('landing.accEaseDesc')
     },
     {
       icon: HeartHandshake,
-      title: 'Government Schemes & Subsidies',
-      desc: 'Bookmark and apply for PM-Kisan, Fasal Bima Yojana, and loan subsidies directly with simplified process manuals.'
+      title: t('landing.accSchemesTitle'),
+      desc: t('landing.accSchemesDesc')
     }
   ];
 
   const faqs = [
     {
-      q: 'How does the crop disease scanner work?',
-      a: 'Simply upload or snap a photo of the infected crop leaves on the disease scanner page. Our simulator analyzes the leaf pattern and returns the identified disease, confidence percentage, symptoms, and organic/chemical remedies.'
+      q: t('landing.faq1Q'),
+      a: t('landing.faq1A')
     },
     {
-      q: 'Can I use this app without internet access?',
-      a: 'Yes, the system caches government schemes and mandi prices. You can view your bookmarked schemes and cached market listings even when offline.'
+      q: t('landing.faq2Q'),
+      a: t('landing.faq2A')
     },
     {
-      q: 'Is this application available in regional languages?',
-      a: 'Absolutely. We support English, Hindi, Tamil, and Marathi. You can toggle your preferred language from the top navbar at any time.'
+      q: t('landing.faq3Q'),
+      a: t('landing.faq3A')
     }
   ];
 
@@ -73,7 +73,7 @@ const LandingPage: React.FC = () => {
 
   const handleReadIntroduction = () => {
     readTextAloud(
-      "Welcome to the Smart Farmer Assistance System. A premium agricultural portal offering weather forecasts, crop suggestions, crop disease detection, live mandi prices, and government schemes. Click on Login to access your dashboard."
+      t('landing.heroTitle') + ". " + t('landing.heroSubtitle') + " " + t('landing.accessDashboard')
     );
   };
 
@@ -88,16 +88,16 @@ const LandingPage: React.FC = () => {
             
             <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800 px-3 py-1 text-sm font-semibold text-emerald-800 dark:text-emerald-400">
-                🌱 Premium Farming Assistant Portal
+                {t('landing.heroBadge')}
               </span>
               <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl text-slate-900 dark:text-white">
-                Empowering Farmers with <br />
+                {t('landing.heroTitle').split('with')[0]} {t('landing.heroTitle').includes('with') && 'with'} <br />
                 <span className="bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent">
-                  Smart Decision Tools
+                  {t('landing.heroTitle').includes('with') ? t('landing.heroTitle').split('with')[1] : t('landing.heroTitle')}
                 </span>
               </h1>
               <p className="max-w-2xl text-lg text-slate-600 dark:text-slate-300 mx-auto lg:mx-0">
-                A simple, voice-assisted dashboard helping farmers maximize harvest yield, scan leaf diseases, analyze real-time market prices, and find government subsidies.
+                {t('landing.heroSubtitle')}
               </p>
               
               <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4">
@@ -105,14 +105,14 @@ const LandingPage: React.FC = () => {
                   to="/login"
                   className="rounded-xl bg-primary-600 px-6 py-3.5 text-base font-bold text-white shadow-md hover:bg-primary-700 transition-all text-center"
                 >
-                  Access Farmer Dashboard
+                  {t('landing.accessDashboard')}
                 </Link>
                 <button
                   onClick={handleReadIntroduction}
                   className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/60 dark:bg-slate-900/60 px-6 py-3.5 text-base font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
                 >
                   <Volume2 className="h-5 w-5 text-primary-500" />
-                  Listen Aloud
+                  {t('landing.listenAloud')}
                 </button>
               </div>
             </div>
@@ -129,12 +129,12 @@ const LandingPage: React.FC = () => {
                   🌾
                 </div>
                 <div className="pt-10 space-y-4">
-                  <h3 className="text-xl font-bold">Ramesh Patel</h3>
+                  <h3 className="text-xl font-bold">{t('landing.testimonialAuthor')}</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    "Using the Crop Advisor and Disease Scanner, I was able to diagnose Early Blight on my tomatoes and save my harvest. The Marathi voice support is wonderful."
+                    {t('landing.testimonialQuote')}
                   </p>
                   <div className="flex justify-center text-amber-500 font-bold">⭐️⭐️⭐️⭐️⭐️</div>
-                  <div className="text-xs text-primary-600 font-bold dark:text-primary-400">Farmer, Madhya Pradesh</div>
+                  <div className="text-xs text-primary-600 font-bold dark:text-primary-400">{t('landing.testimonialRole')}</div>
                 </div>
               </motion.div>
             </div>
@@ -147,8 +147,8 @@ const LandingPage: React.FC = () => {
       <section className="py-20 bg-white dark:bg-slate-900 border-t border-b border-slate-200/50 dark:border-slate-800/40">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
-            <h2 className="text-3xl font-extrabold sm:text-4xl">Everything You Need In One App</h2>
-            <p className="text-slate-600 dark:text-slate-400">All tools are integrated seamlessly and optimized for elder accessibility.</p>
+            <h2 className="text-3xl font-extrabold sm:text-4xl">{t('landing.featuresTitle')}</h2>
+            <p className="text-slate-600 dark:text-slate-400">{t('landing.featuresSubtitle')}</p>
           </div>
 
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
@@ -178,7 +178,7 @@ const LandingPage: React.FC = () => {
             </div>
 
             <div className="lg:col-span-7 space-y-8">
-              <h2 className="text-3xl font-extrabold sm:text-4xl">Designed Specially for Rural Communities</h2>
+              <h2 className="text-3xl font-extrabold sm:text-4xl">{t('landing.accessibilityTitle')}</h2>
               
               <div className="space-y-6">
                 {benefits.map((benefit, idx) => {
@@ -206,8 +206,8 @@ const LandingPage: React.FC = () => {
       <section className="py-20 bg-white dark:bg-slate-900 border-t border-slate-200/50 dark:border-slate-800/40">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <div className="text-center space-y-4 mb-16">
-            <h2 className="text-3xl font-extrabold">Frequently Asked Questions</h2>
-            <p className="text-slate-600 dark:text-slate-400">Need help understanding our services?</p>
+            <h2 className="text-3xl font-extrabold">{t('landing.faqTitle')}</h2>
+            <p className="text-slate-600 dark:text-slate-400">{t('landing.faqSubtitle')}</p>
           </div>
 
           <div className="space-y-4">
@@ -238,29 +238,29 @@ const LandingPage: React.FC = () => {
             <div className="grid md:grid-cols-12 gap-8 items-center">
               
               <div className="md:col-span-7 space-y-4">
-                <h2 className="text-3xl font-extrabold">Have Queries? Speak with our Helpdesk</h2>
-                <p className="text-slate-600 dark:text-slate-300">We provide 24/7 agricultural advisory support via telephone lines or standard portal messages.</p>
+                <h2 className="text-3xl font-extrabold">{t('landing.contactTitle')}</h2>
+                <p className="text-slate-600 dark:text-slate-300">{t('landing.contactSubtitle')}</p>
                 <div className="flex items-center gap-2 text-primary-600 font-bold text-xl dark:text-primary-400">
                   <PhoneCall className="h-6 w-6" />
-                  <span>Call Toll-Free: 1800-123-4567</span>
+                  <span>{t('landing.callTollFree')}</span>
                 </div>
               </div>
 
               <div className="md:col-span-5">
-                <form className="space-y-4 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-md" onSubmit={(e) => { e.preventDefault(); alert('Help request submitted successfully. A specialist will call you shortly!'); }}>
+                <form className="space-y-4 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-md" onSubmit={(e) => { e.preventDefault(); alert(t('landing.callbackSuccess')); }}>
                   <div>
-                    <label className="block text-xs font-semibold uppercase mb-1">Your Name</label>
+                    <label className="block text-xs font-semibold uppercase mb-1">{t('landing.callbackName')}</label>
                     <input required type="text" className="w-full rounded-lg border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold uppercase mb-1">Mobile Number</label>
+                    <label className="block text-xs font-semibold uppercase mb-1">{t('landing.callbackPhone')}</label>
                     <input required type="tel" className="w-full rounded-lg border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm" />
                   </div>
                   <button
                     type="submit"
                     className="w-full rounded-xl bg-primary-600 p-3 text-sm font-bold text-white shadow-sm hover:bg-primary-700"
                   >
-                    Request Call Back
+                    {t('landing.callbackButton')}
                   </button>
                 </form>
               </div>

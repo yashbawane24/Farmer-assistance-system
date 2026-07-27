@@ -132,7 +132,7 @@ const Navbar: React.FC = () => {
               </button>
               {accessMenuOpen && (
                 <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-800">
-                  <h4 className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Font Scaling</h4>
+                  <h4 className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">{t('common.fontScaling', 'Font Scaling')}</h4>
                   <div className="flex space-x-1 mb-3">
                     {fontOptions.map((opt) => (
                       <button
@@ -157,7 +157,7 @@ const Navbar: React.FC = () => {
                   >
                     <span className="flex items-center gap-2">
                       <Eye className="h-4 w-4" />
-                      High Contrast
+                      {t('common.highContrast', 'High Contrast')}
                     </span>
                     <input
                       type="checkbox"
@@ -185,7 +185,7 @@ const Navbar: React.FC = () => {
                 <button
                   onClick={() => navigate('/dashboard')}
                   className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 relative"
-                  title="Notifications"
+                  title={t('common.notifications', 'Notifications')}
                 >
                   <Bell className="h-5 w-5" />
                   <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900" />
@@ -193,7 +193,7 @@ const Navbar: React.FC = () => {
                 <Link
                   to="/profile"
                   className="flex items-center gap-1.5 p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                  title="My Profile"
+                  title={t('common.profile', 'My Profile')}
                 >
                   {user.profilePicture ? (
                     <img src={user.profilePicture} alt={user.name} className="h-6 w-6 rounded-full object-cover border border-slate-200" />
@@ -207,7 +207,7 @@ const Navbar: React.FC = () => {
                 <button
                   onClick={handleLogout}
                   className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
-                  title="Logout"
+                  title={t('common.logout', 'Logout')}
                 >
                   <LogOut className="h-5 w-5" />
                 </button>
@@ -304,7 +304,7 @@ const Navbar: React.FC = () => {
                   className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
                   <Bell className="h-5 w-5" />
-                  <span>Notifications</span>
+                  <span>{t('common.notifications', 'Notifications')}</span>
                 </Link>
 
                 <button
@@ -339,7 +339,7 @@ const Navbar: React.FC = () => {
             {/* Mobile Accessibility Controls */}
             <div className="px-3 py-2 space-y-3">
               <div>
-                <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Language</span>
+                <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">{t('common.language', 'Language')}</span>
                 <div className="grid grid-cols-4 gap-1">
                   <button onClick={() => handleLanguageChange('en')} className={`py-1.5 rounded text-sm ${language === 'en' ? 'bg-primary-500 text-white font-bold' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>EN</button>
                   <button onClick={() => handleLanguageChange('hi')} className={`py-1.5 rounded text-sm ${language === 'hi' ? 'bg-primary-500 text-white font-bold' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>HI</button>
@@ -349,7 +349,7 @@ const Navbar: React.FC = () => {
               </div>
 
               <div>
-                <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Text Scale</span>
+                <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">{t('common.textScale', 'Text Scale')}</span>
                 <div className="grid grid-cols-3 gap-1">
                   {fontOptions.map((opt) => (
                     <button
@@ -373,7 +373,7 @@ const Navbar: React.FC = () => {
               >
                 <span className="flex items-center gap-2 font-semibold">
                   <Eye className="h-4 w-4" />
-                  High Contrast Theme
+                  {t('common.highContrastTheme', 'High Contrast Theme')}
                 </span>
                 <input
                   type="checkbox"

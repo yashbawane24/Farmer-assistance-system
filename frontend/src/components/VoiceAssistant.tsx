@@ -5,7 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAccessibility } from '../context/AccessibilityContext';
 
 const VoiceAssistant: React.FC = () => {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { readTextAloud, stopReading, isReading } = useAccessibility();
   const navigate = useNavigate();
 
@@ -29,19 +29,19 @@ const VoiceAssistant: React.FC = () => {
 
       rec.onstart = () => {
         setIsListening(true);
-        setVoiceText('Listening...');
+        setVoiceText(t('voice.listening'));
       };
 
       rec.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript.toLowerCase();
-        setVoiceText(`You said: "${transcript}"`);
+        setVoiceText(`"${transcript}"`);
         handleVoiceCommand(transcript);
       };
 
       rec.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         setIsListening(false);
-        setVoiceText('Error listening. Try again.');
+        setVoiceText(t('voice.error'));
       };
 
       rec.onend = () => {
@@ -53,48 +53,48 @@ const VoiceAssistant: React.FC = () => {
   }, [language]);
 
   const handleVoiceCommand = (command: string) => {
-    // English Commands
+    // Multilingual Commands
     if (command.includes('weather') || command.includes('forecast') || command.includes('मौसम') || command.includes('வானிலை') || command.includes('हवामान')) {
-      readTextAloud('Opening weather details page. Loading current forecast...');
+      readTextAloud(t('voice.weather'));
       navigate('/weather');
     } 
     else if (command.includes('recommend') || command.includes('crop') || command.includes('सलाहकार') || command.includes('ஆலோசகர்') || command.includes('पीक सल्ला')) {
-      readTextAloud('Opening crop advisor page. You can input your soil and season to get recommendations.');
+      readTextAloud(t('voice.crop'));
       navigate('/recommendation');
     }
     else if (command.includes('disease') || command.includes('scan') || command.includes('बीमारी') || command.includes('நோய்') || command.includes('रोग')) {
-      readTextAloud('Opening crop disease detection page. You can upload an image here to scan for crop diseases.');
+      readTextAloud(t('voice.disease'));
       navigate('/disease-detection');
     }
     else if (command.includes('price') || command.includes('mandi') || command.includes('दर') || command.includes('விலை') || command.includes('भाव')) {
-      readTextAloud('Opening market prices page. Loading today\'s crop rates.');
+      readTextAloud(t('voice.mandi'));
       navigate('/market-prices');
     }
     else if (command.includes('scheme') || command.includes('yojana') || command.includes('योजना') || command.includes('திட்டம்')) {
-      readTextAloud('Opening government schemes page. Viewing latest agricultural schemes.');
+      readTextAloud(t('voice.scheme'));
       navigate('/schemes');
     }
     else if (command.includes('dashboard') || command.includes('home') || command.includes('घर') || command.includes('முகப்பு')) {
-      readTextAloud('Navigating back to farmer dashboard.');
+      readTextAloud(t('voice.dashboard'));
       navigate('/dashboard');
     }
     else if (command.includes('profile') || command.includes('खाता') || command.includes('சுயவிவரம்')) {
-      readTextAloud('Opening your profile settings.');
+      readTextAloud(t('voice.profile'));
       navigate('/profile');
     }
     else if (command.includes('stop') || command.includes('शांत') || command.includes('நிறுத்து') || command.includes('थांब')) {
       stopReading();
-      setVoiceText('Voice read stopped.');
+      setVoiceText(t('voice.stop'));
     }
     else {
-      readTextAloud('Command not recognized. Try saying "weather", "mandi prices", "crop advisor", or "government schemes".');
-      setVoiceText(`Unrecognized: "${command}"`);
+      readTextAloud(t('voice.unrecognized'));
+      setVoiceText(t('voice.unrecognized'));
     }
   };
 
   const toggleListening = () => {
     if (!recognition) {
-      alert('Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.');
+      alert(t('voice.unsupported'));
       return;
     }
 
@@ -132,7 +132,7 @@ const VoiceAssistant: React.FC = () => {
           className={`flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-300 hover:scale-110 active:scale-95 ${
             isListening 
               ? 'bg-red-500 text-white voice-pulse-btn' 
-              : 'bg-primary-600 text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600'
+              : 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600'
           }`}
           title="Voice Assistant (Talk to me)"
         >

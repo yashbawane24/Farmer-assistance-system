@@ -6,7 +6,6 @@ import { Sprout, TrendingUp, Calendar, Compass, Layers, Droplet, IndianRupee, Sp
 
 const SoilTypes = ['Alluvial', 'Black', 'Red', 'Sandy', 'Clayey', 'Loamy'];
 const Seasons = ['Kharif', 'Rabi', 'Zaid'];
-const WaterLevels = ['High', 'Medium', 'Low'];
 
 const CropRecommendation: React.FC = () => {
   const { user } = useAuth();
@@ -42,10 +41,10 @@ const CropRecommendation: React.FC = () => {
       if (response.data.success) {
         setRecommendations(response.data.recommendations);
       } else {
-        setError('Failed to compute crop suggestions.');
+        setError(t('cropRecom.failedCompute', 'Failed to compute crop suggestions.'));
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Server error computing crop model.');
+      setError(err.response?.data?.message || t('cropRecom.serverError', 'Server error computing crop model.'));
     } finally {
       setLoading(false);
     }
@@ -57,10 +56,10 @@ const CropRecommendation: React.FC = () => {
       {/* Title Header */}
       <div>
         <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
-          <span>🌾</span> {t('cropRecomTitle')}
+          <span>🌾</span> {t('cropRecom.title')}
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Analyze soil metrics, season inputs, and regional water constraints to suggest high-profit crops.
+          {t('cropRecom.desc')}
         </p>
       </div>
 
@@ -69,38 +68,44 @@ const CropRecommendation: React.FC = () => {
         {/* Left Side: Advisor Input Wizard */}
         <div className="lg:col-span-4">
           <form onSubmit={handleSubmit} className="glass-panel p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-5 shadow-sm">
-            <h3 className="text-lg font-bold border-b border-slate-100 dark:border-slate-850 pb-2">Advisor Parameters</h3>
+            <h3 className="text-lg font-bold border-b border-slate-100 dark:border-slate-850 pb-2">
+              {t('cropRecom.params', 'Advisor Parameters')}
+            </h3>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{t('selectSoil')}</label>
+              <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{t('cropRecom.soilType')}</label>
               <select
                 value={soilType}
                 onChange={(e) => setSoilType(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm focus:ring-primary-500"
               >
                 {SoilTypes.map((soil) => (
-                  <option key={soil} value={soil}>{soil} Soil</option>
+                  <option key={soil} value={soil}>
+                    {soil} {t('common.soilTypeLabel')}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{t('selectSeason')}</label>
+              <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{t('cropRecom.growingSeason')}</label>
               <select
                 value={season}
                 onChange={(e) => setSeason(e.target.value)}
                 className="w-full rounded-xl border border-slate-300 p-2.5 dark:bg-slate-900 dark:border-slate-700 text-sm focus:ring-primary-500"
               >
                 {Seasons.map((seas) => (
-                  <option key={seas} value={seas}>{seas} Season</option>
+                  <option key={seas} value={seas}>
+                    {seas}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{t('waterAvailability')}</label>
+              <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{t('cropRecom.waterAvail')}</label>
               <div className="grid grid-cols-3 gap-1">
-                {WaterLevels.map((lvl) => (
+                {['High', 'Medium', 'Low'].map((lvl) => (
                   <button
                     key={lvl}
                     type="button"
@@ -111,7 +116,7 @@ const CropRecommendation: React.FC = () => {
                         : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
-                    {lvl}
+                    {t(`common.water.${lvl.toLowerCase()}`, lvl)}
                   </button>
                 ))}
               </div>
@@ -119,7 +124,7 @@ const CropRecommendation: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{t('farmSize')}</label>
+                <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{t('cropRecom.farmSize')}</label>
                 <input
                   required
                   type="number"
@@ -132,7 +137,7 @@ const CropRecommendation: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-400 mb-1">Budget (INR)</label>
+                <label className="block text-xs font-bold uppercase text-slate-400 mb-1">{t('cropRecom.budget')}</label>
                 <input
                   required
                   type="number"
@@ -150,7 +155,7 @@ const CropRecommendation: React.FC = () => {
               className="w-full rounded-xl bg-primary-600 py-3 text-sm font-bold text-white shadow-md hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center gap-1.5"
             >
               <Compass className="h-4 w-4" />
-              {loading ? 'Analyzing...' : t('recommendButton')}
+              {loading ? t('common.loading') : t('cropRecom.btnFind')}
             </button>
           </form>
         </div>
@@ -168,7 +173,7 @@ const CropRecommendation: React.FC = () => {
             <div className="space-y-6">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-amber-500" />
-                Suggested Crops for {farmSize} Acres
+                {t('cropRecom.resultsTitle')} ({farmSize} {t('common.farmSizeLabel')})
               </h2>
 
               <div className="grid gap-6 sm:grid-cols-2">
@@ -183,10 +188,12 @@ const CropRecommendation: React.FC = () => {
                           <Sprout className="h-5 w-5 text-primary-500" />
                           {rec.cropName}
                         </h3>
-                        <span className="rounded bg-primary-100 dark:bg-primary-950 px-2 py-0.5 text-xs text-primary-800 dark:text-primary-400 font-bold">Recommended</span>
+                        <span className="rounded bg-primary-100 dark:bg-primary-950 px-2 py-0.5 text-xs text-primary-800 dark:text-primary-400 font-bold">
+                          {t('cropRecom.recommended', 'Recommended')}
+                        </span>
                       </div>
                       
-                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                      <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                         {rec.description}
                       </p>
 
@@ -194,25 +201,27 @@ const CropRecommendation: React.FC = () => {
 
                       <div className="grid grid-cols-2 gap-2 text-xs space-y-1">
                         <div>
-                          <span className="text-slate-400 block mb-0.5">{t('expectedYield')}</span>
+                          <span className="text-slate-400 block mb-0.5">{t('cropRecom.expectedYield')}</span>
                           <h4 className="font-extrabold text-slate-850 dark:text-slate-100">{rec.expectedYield}</h4>
                         </div>
                         <div>
-                          <span className="text-slate-400 block mb-0.5">{t('growingTime')}</span>
+                          <span className="text-slate-400 block mb-0.5">{t('cropRecom.growTime')}</span>
                           <h4 className="font-extrabold text-slate-850 dark:text-slate-100 flex items-center gap-1">
                             <Calendar className="h-3.5 w-3.5 text-slate-500" />
-                            {rec.growingTimeMonths} Months
+                            {rec.growingTimeMonths} {t('cropRecom.months', 'Months')}
                           </h4>
                         </div>
                       </div>
 
                       <div className="pt-1">
-                        <span className="text-slate-400 text-xs block mb-0.5">{t('suitableFertilizer')}</span>
+                        <span className="text-slate-400 text-xs block mb-0.5">{t('cropRecom.recommendedFertilizer')}</span>
                         <h4 className="font-extrabold text-xs text-emerald-600 dark:text-emerald-400">{rec.suitableFertilizer}</h4>
                       </div>
 
                       <div className="pt-2">
-                        <span className="text-slate-400 text-xs font-bold uppercase block mb-1.5">Key Advantages</span>
+                        <span className="text-slate-400 text-xs font-bold uppercase block mb-1.5">
+                          {t('cropRecom.advantages', 'Key Advantages')}
+                        </span>
                         <ul className="text-xs space-y-1.5">
                           {rec.advantages.map((adv: string, aIdx: number) => (
                             <li key={aIdx} className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
@@ -225,12 +234,12 @@ const CropRecommendation: React.FC = () => {
 
                     <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
                       <div>
-                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">{t('profitEstimation')}</span>
+                        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">{t('cropRecom.profitEst')}</span>
                         <h3 className="text-2xl font-extrabold text-primary-600 dark:text-primary-400">
                           ₹{rec.totalProfitEstimation.toLocaleString()}
                         </h3>
                       </div>
-                      <span className="text-xs text-slate-400">₹{rec.profitEstimationPerAcre.toLocaleString()}/Acre</span>
+                      <span className="text-xs text-slate-400">₹{rec.profitEstimationPerAcre.toLocaleString()} / {t('cropRecom.acre', 'Acre')}</span>
                     </div>
 
                   </div>
@@ -240,8 +249,8 @@ const CropRecommendation: React.FC = () => {
           ) : (
             <div className="glass-panel rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center space-y-4">
               <div className="text-5xl">🌾</div>
-              <h3 className="text-lg font-bold">No advisor records displayed yet.</h3>
-              <p className="text-sm text-slate-500 max-w-sm">Complete the advisor inputs panel on the left and submit to query crop suggestions.</p>
+              <h3 className="text-lg font-bold">{t('cropRecom.noRecordsTitle', 'No advisor records displayed yet.')}</h3>
+              <p className="text-sm text-slate-500 max-w-sm">{t('cropRecom.noRecordsDesc', 'Complete the advisor inputs panel on the left and submit to query crop suggestions.')}</p>
             </div>
           )}
 

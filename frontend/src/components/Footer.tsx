@@ -14,12 +14,12 @@ const Footer: React.FC = () => {
           </span>
         </div>
         <p className="text-sm">
-          &copy; {new Date().getFullYear()} {t('brandName')} Assistance Portal. All rights reserved.
+          &copy; {new Date().getFullYear()} {t('brandName')} {t('footer.assistancePortal', 'Assistance Portal. All rights reserved.')}
         </p>
         <div className="flex justify-center gap-6 text-xs text-slate-500">
-          <a href="#" className="hover:text-slate-300">Privacy Policy</a>
-          <a href="#" className="hover:text-slate-300">Terms of Service</a>
-          <a href="#" className="hover:text-slate-300">Help Desk</a>
+          <a href="#" className="hover:text-slate-300">{t('footer.privacyPolicy', 'Privacy Policy')}</a>
+          <a href="#" className="hover:text-slate-300">{t('footer.termsOfService', 'Terms of Service')}</a>
+          <a href="#" className="hover:text-slate-300">{t('footer.helpDesk', 'Help Desk')}</a>
         </div>
       </div>
     </footer>
