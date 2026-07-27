@@ -21,13 +21,13 @@ const Navbar: React.FC = () => {
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
 
   const navLinks = [
-    { name: t('dashboard'), path: '/dashboard', icon: LayoutDashboard },
-    { name: t('weather'), path: '/weather', icon: Cloud },
-    { name: t('recommendation'), path: '/recommendation', icon: Sprout },
-    { name: t('diseaseDetection'), path: '/disease-detection', icon: ShieldAlert },
-    { name: t('marketPrices'), path: '/market-prices', icon: IndianRupee },
-    { name: t('schemes'), path: '/schemes', icon: Library },
-    { name: t('helpCenterTitle'), path: '/help-center', icon: HelpCircle }
+    { name: t('common.dashboard'), path: '/dashboard', icon: LayoutDashboard },
+    { name: t('common.weather'), path: '/weather', icon: Cloud },
+    { name: t('common.recommendation'), path: '/recommendation', icon: Sprout },
+    { name: t('common.diseaseDetection'), path: '/disease-detection', icon: ShieldAlert },
+    { name: t('common.marketPrices'), path: '/market-prices', icon: IndianRupee },
+    { name: t('common.schemes'), path: '/schemes', icon: Library },
+    { name: t('helpCenter.title'), path: '/help-center', icon: HelpCircle }
   ];
 
   const handleLanguageChange = (lang: 'en' | 'hi' | 'ta' | 'mr') => {
@@ -59,7 +59,7 @@ const Navbar: React.FC = () => {
             <Link to={user ? "/dashboard" : "/"} className="flex items-center gap-2">
               <span className="text-2xl">🌱</span>
               <span className="font-sans text-xl font-bold tracking-tight text-primary-600 dark:text-primary-400">
-                {t('brandName')}
+                {t('common.brandName')}
               </span>
             </Link>
           </div>
@@ -93,7 +93,7 @@ const Navbar: React.FC = () => {
                       : 'border-rose-300/40 hover:bg-rose-50/50 hover:text-rose-700 dark:border-rose-900/20 dark:text-rose-400'
                   }`}
                 >
-                  {t('admin')}
+                  {t('common.admin')}
                 </Link>
               )}
             </div>
@@ -218,13 +218,13 @@ const Navbar: React.FC = () => {
                   to="/login"
                   className="rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
-                  {t('signIn')}
+                  {t('common.signIn')}
                 </Link>
                 <Link
                   to="/register"
                   className="rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 shadow-sm"
                 >
-                  {t('createAccount')}
+                  {t('common.createAccount')}
                 </Link>
               </div>
             )}
@@ -279,7 +279,7 @@ const Navbar: React.FC = () => {
                     onClick={() => setMobileMenuOpen(false)}
                     className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
                   >
-                    <span>🛡️ {t('admin')}</span>
+                    <span>🛡️ {t('common.admin')}</span>
                   </Link>
                 )}
                 
@@ -295,7 +295,7 @@ const Navbar: React.FC = () => {
                   ) : (
                     <User className="h-5 w-5" />
                   )}
-                  <span>{t('profile')} ({user.name})</span>
+                  <span>{t('common.profile')} ({user.name})</span>
                 </Link>
                 
                 <Link
@@ -312,7 +312,7 @@ const Navbar: React.FC = () => {
                   className="flex w-full items-center gap-3 px-3 py-3 rounded-lg text-base font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
                 >
                   <LogOut className="h-5 w-5" />
-                  <span>{t('logout')}</span>
+                  <span>{t('common.logout')}</span>
                 </button>
               </>
             ) : (
@@ -322,14 +322,14 @@ const Navbar: React.FC = () => {
                   onClick={() => setMobileMenuOpen(false)}
                   className="block text-center rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-800 dark:border-slate-700 px-4 py-2.5 text-base font-bold text-slate-700 dark:text-slate-355"
                 >
-                  {t('signIn')}
+                  {t('common.signIn')}
                 </Link>
                 <Link
                   to="/register"
                   onClick={() => setMobileMenuOpen(false)}
                   className="block text-center rounded-xl bg-primary-600 px-4 py-2.5 text-base font-bold text-white dark:bg-primary-500"
                 >
-                  {t('createAccount')}
+                  {t('common.createAccount')}
                 </Link>
               </div>
             )}
