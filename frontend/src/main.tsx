@@ -9,8 +9,9 @@ import { ThemeProvider } from './context/ThemeContext';
 import { AccessibilityProvider } from './context/AccessibilityContext';
 import { AuthProvider } from './context/AuthContext';
 
-// Set production API base URL dynamically using environment variables
-axios.defaults.baseURL = (import.meta as any).env.VITE_API_URL || '';
+// Set production API base URL dynamically using environment variables or fallback to saved config
+const customApiUrl = localStorage.getItem('custom_api_url');
+axios.defaults.baseURL = customApiUrl || (import.meta as any).env.VITE_API_URL || '';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
