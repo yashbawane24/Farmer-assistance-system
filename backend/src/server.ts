@@ -11,7 +11,7 @@ import { errorHandler } from './middleware/errorMiddleware';
 dotenv.config();
 
 // Validate required environment variables at startup
-const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET', 'EMAIL_USER', 'EMAIL_PASS'];
+const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET'];
 const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
 if (missingEnvVars.length > 0) {
@@ -40,19 +40,22 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // In development mode, bypass CORS checks to support local network device testing (e.g. mobile phones)
-    if (process.env.NODE_ENV !== 'production' || !origin) {
+    // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
+    if (!origin) {
       return callback(null, true);
     }
-    
-    const isAllowed = allowedOrigins.some(allowedOrigin => {
-      return origin === allowedOrigin || origin.startsWith(allowedOrigin);
+    // In development, allow everything
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    // In production, check against allowed origins
+    const isAllowed = allowedOrigins.some(allowed => {
+      return origin === allowed || origin.endsWith('.vercel.app');
     });
-    
     if (isAllowed) {
       callback(null, true);
     } else {
-      console.warn(`[CORS] Request origin blocked: ${origin}`);
+      console.warn(`[CORS] Blocked: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -105,18 +108,15 @@ app.get('/api', (req, res) => {
   });
 });
 
-// Serve frontend build static files in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../../frontend/dist')));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
-  });
-}
+// Health check endpoint for Railway
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // Global Error Handler
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const PORT = parseInt(process.env.PORT || '5001', 10);
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server executing in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
