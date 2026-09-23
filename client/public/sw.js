@@ -1,55 +1,49 @@
-// SFAS Offline Service Worker
-const CACHE_NAME = 'sfas-cache-v1';
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json'
-];
+// SFAS Resilient Offline Service Worker
+const CACHE_NAME = 'sfas-cache-v2';
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('🌾 Precaching SFAS app shell');
-      return cache.addAll(STATIC_ASSETS);
-    })
-  );
+  // Activate immediately without waiting for old tabs to close
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
+      // Purge old stale caches (including v1)
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys.filter((key) => key !== CACHE_NAME).map((key) => {
+          console.log('🧹 Purging outdated service worker cache:', key);
+          return caches.delete(key);
+        })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  // Handle API requests with Network-First and fallback cache
-  if (event.request.url.includes('/api/')) {
+  // Only handle GET requests
+  if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+
+  // 1. API requests: Network-First with graceful offline fallback
+  if (url.pathname.startsWith('/api')) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          // Clone and cache successful GET responses
-          if (event.request.method === 'GET' && response.status === 200) {
+          if (response && response.status === 200) {
             const copy = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
           }
           return response;
         })
         .catch(async () => {
-          console.warn('⚡ Offline mode: Serving cached API response for', event.request.url);
-          const cachedResponse = await caches.match(event.request);
-          if (cachedResponse) return cachedResponse;
-
-          // Return graceful offline fallback JSON envelope
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
           return new Response(
             JSON.stringify({
               success: true,
-              data: { isOfflineCached: true, message: 'Offline mode active. Showing cached local agricultural data.' }
+              data: { isOfflineCached: true, message: 'Offline mode active. Using cached agricultural data.' }
             }),
             { headers: { 'Content-Type': 'application/json' } }
           );
@@ -58,10 +52,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle static assets with Cache-First
+  // 2. Static Assets (JS, CSS, images, fonts): Network-First to guarantee latest deploy
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).catch(() => caches.match('/index.html'));
-    })
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const copy = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
+        return networkResponse;
+      })
+      .catch(async () => {
+        // Fallback to cache ONLY if network is genuinely disconnected
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        // Never return HTML for JS/CSS assets
+        if (event.request.destination === 'document') {
+          return caches.match('/index.html');
+        }
+        return new Response('Offline asset unavailable', { status: 503, statusText: 'Service Unavailable' });
+      })
   );
 });

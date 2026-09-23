@@ -26,15 +26,42 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     
-    <!-- Service Worker Registration -->
+    <!-- Service Worker Registration & Self-Healing Cache Recovery -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('🌾 SFAS Service Worker registered with scope:', reg.scope))
+            .then(reg => {
+              console.log('🌾 SFAS Service Worker registered with scope:', reg.scope);
+              reg.update(); // Always check for fresh deployment
+            })
             .catch(err => console.log('Service Worker registration skipped:', err));
         });
       }
+
+      // Self-healing: If stale browser cache prevents React mount, clear and reload once
+      window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          const root = document.getElementById('root');
+          if (root && root.children.length === 0 && !sessionStorage.getItem('sfas_reloaded')) {
+            console.warn('⚠️ Stale cache detected on mount. Clearing caches and reloading...');
+            sessionStorage.setItem('sfas_reloaded', 'true');
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(regs => {
+                for (const reg of regs) reg.unregister();
+              });
+            }
+            if ('caches' in window) {
+              caches.keys().then(keys => {
+                for (const k of keys) caches.delete(k);
+              });
+            }
+            window.location.reload();
+          } else {
+            sessionStorage.removeItem('sfas_reloaded');
+          }
+        }, 1500);
+      });
     </script>
   </body>
 </html>
