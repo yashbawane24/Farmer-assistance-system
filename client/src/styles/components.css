@@ -1,0 +1,340 @@
+/* Editorial Header & Navigation */
+.site-header {
+  background-color: var(--color-canvas-cream);
+  border-bottom: 1px solid var(--color-border-subtle);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 72px;
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--color-primary-forest);
+  text-decoration: none;
+}
+
+.brand-title {
+  font-family: var(--font-editorial);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color-primary-forest);
+}
+
+.brand-sub {
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  color: var(--color-leaf-green);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.nav-links-desktop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  list-style: none;
+}
+
+.nav-link {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-main);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.nav-link:hover, .nav-link.active {
+  color: var(--color-primary-forest);
+  background-color: var(--color-canvas-surface);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* Mobile Bottom Navigation (Farmer-First thumb zone) */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #FFFFFF;
+  border-top: 1px solid var(--color-border-subtle);
+  height: 64px;
+  z-index: 999;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+}
+
+@media (max-width: 860px) {
+  .nav-links-desktop {
+    display: none;
+  }
+  .landing-auth-btn {
+    display: none !important;
+  }
+  .mobile-bottom-nav {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+  }
+  body {
+    padding-bottom: 64px;
+  }
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-decoration: none;
+  flex: 1;
+  height: 100%;
+  gap: 2px;
+  transition: color var(--transition-fast);
+}
+
+.mobile-nav-item.active {
+  color: var(--color-primary-forest);
+}
+
+.mobile-nav-item svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Offline Badge */
+.offline-banner {
+  background-color: #FFF3CD;
+  color: #856404;
+  border-bottom: 1px solid #FFEBAA;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.offline-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 600;
+  background-color: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FDE68A;
+}
+
+/* Audio Speaker Button (Accessibility Read-out) */
+.audio-speaker-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--color-canvas-surface);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-primary-forest);
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.audio-speaker-btn:hover {
+  background-color: var(--color-primary-forest);
+  color: #FFFFFF;
+}
+
+.audio-speaker-btn.playing {
+  background-color: var(--color-leaf-green);
+  color: #FFFFFF;
+  animation: pulse-border 1.5s infinite;
+}
+
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 0 0 rgba(56, 102, 65, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(56, 102, 65, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(56, 102, 65, 0); }
+}
+
+/* Guided Option Picker (Visual touch cards for soil, water, crops) */
+.guided-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-sm);
+}
+
+.option-card {
+  background-color: var(--color-canvas-surface);
+  border: 2px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  transition: all var(--transition-fast);
+  min-height: 90px;
+  user-select: none;
+}
+
+.option-card:hover {
+  border-color: var(--color-primary-forest);
+  background-color: #FFFFFF;
+}
+
+.option-card.selected {
+  border-color: var(--color-primary-forest);
+  background-color: #FFFFFF;
+  box-shadow: 0 0 0 1px var(--color-primary-forest);
+}
+
+.option-card-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-primary-forest);
+}
+
+.option-card-desc {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+/* Big Microphone Button for AI Voice Agronomist */
+.voice-mic-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl) var(--space-md);
+  gap: var(--space-md);
+}
+
+.voice-mic-button {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background-color: var(--color-primary-forest);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  border: 4px solid #FFFFFF;
+  box-shadow: 0 6px 20px rgba(27, 56, 43, 0.25);
+  cursor: pointer;
+  transition: transform var(--transition-fast), background-color var(--transition-fast);
+}
+
+.voice-mic-button:hover {
+  transform: scale(1.06);
+  background-color: #264e3c;
+}
+
+.voice-mic-button.recording {
+  background-color: var(--color-terracotta);
+  animation: ripple-record 1.2s infinite;
+}
+
+@keyframes ripple-record {
+  0% { box-shadow: 0 0 0 0 rgba(188, 71, 73, 0.5); }
+  70% { box-shadow: 0 0 0 20px rgba(188, 71, 73, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(188, 71, 73, 0); }
+}
+
+/* Mandi Comparison Card (Price vs Transport Realization) */
+.mandi-card {
+  background-color: #FFFFFF;
+  border: 1.5px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.mandi-card.best-choice {
+  border-color: var(--color-leaf-green);
+  border-width: 2px;
+}
+
+.mandi-card-ribbon {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: var(--color-leaf-green);
+  color: #FFFFFF;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-bottom-left-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.math-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 0.9rem;
+  border-bottom: 1px dashed var(--color-border-subtle);
+}
+
+.math-breakdown-row.net-total {
+  border-bottom: none;
+  border-top: 2px solid var(--color-primary-forest);
+  padding-top: 10px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--color-primary-forest);
+}
+
+/* Preventative Alert Card */
+.alert-card {
+  background-color: #FFFFFF;
+  border-left: 5px solid var(--color-terracotta);
+  border-top: 1px solid var(--color-border-subtle);
+  border-right: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-md);
+}
+
+.alert-card.advisory {
+  border-left-color: var(--color-accent-amber);
+}
+
+.alert-card.normal {
+  border-left-color: var(--color-leaf-green);
+}

@@ -1,0 +1,22 @@
+{
+  "short_name": "SmartFarmer",
+  "name": "Smart Farmer Assistance System (कृषि मित्र)",
+  "description": "AI-powered, multilingual and offline-capable agricultural decision-support platform.",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#FDFBF7",
+  "theme_color": "#1B382B",
+  "display": "standalone",
+  "orientation": "portrait"
+}

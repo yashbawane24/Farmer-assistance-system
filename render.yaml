@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: smart-farmer-assistance-system
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm install --prefix server && npm install --prefix client && npm run build --prefix client
+    startCommand: node server/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
