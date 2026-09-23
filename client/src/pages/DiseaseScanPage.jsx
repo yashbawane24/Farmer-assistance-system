@@ -13,6 +13,7 @@ export function DiseaseScanPage({ activeProfile, lang, onNavigate }) {
   // States
   const [selectedCrop, setSelectedCrop] = useState(activeProfile?.currentCrop || 'Tomato');
   const [imagePreview, setImagePreview] = useState(null);
+  const [uploadedFileName, setUploadedFileName] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [diagnosis, setDiagnosis] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -49,14 +50,15 @@ export function DiseaseScanPage({ activeProfile, lang, onNavigate }) {
 
   // Sample Demo Leaf Images for quick 1-click testing
   const sampleLeaves = [
-    { label: t.disease.sampleBlight, crop: 'Tomato', color: '#D4A373', type: 'blight' },
-    { label: t.disease.samplePurple, crop: 'Onion', color: '#B08968', type: 'purple' },
-    { label: t.disease.sampleRust, crop: 'Wheat', color: '#E9C46A', type: 'rust' },
-    { label: t.disease.sampleHealthy, crop: 'Tomato', color: '#386641', type: 'healthy' }
+    { label: t.disease.sampleBlight, crop: 'Tomato', color: '#D4A373', type: 'blight', file: 'tomato_early_blight.jpg' },
+    { label: t.disease.samplePurple, crop: 'Onion', color: '#B08968', type: 'purple', file: 'onion_purple_blotch.jpg' },
+    { label: t.disease.sampleRust, crop: 'Wheat', color: '#E9C46A', type: 'rust', file: 'wheat_stripe_rust.jpg' },
+    { label: t.disease.sampleHealthy, crop: 'Tomato', color: '#386641', type: 'healthy', file: 'healthy_crop_leaf.jpg' }
   ];
 
   const handleSelectSample = (sample) => {
     setSelectedCrop(sample.crop);
+    setUploadedFileName(sample.file);
     const canvas = document.createElement('canvas');
     canvas.width = 320;
     canvas.height = 320;
@@ -99,6 +101,7 @@ export function DiseaseScanPage({ activeProfile, lang, onNavigate }) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setUploadedFileName(file.name || '');
     const reader = new FileReader();
     reader.onload = () => {
       setImagePreview(reader.result);
@@ -112,7 +115,30 @@ export function DiseaseScanPage({ activeProfile, lang, onNavigate }) {
     setAnalyzing(true);
 
     try {
-      const result = await EdgeAiDiseaseScanner.scanLeaf(imagePreview, selectedCrop, isOffline);
+      let result = null;
+
+      // When online, call backend API first (which supports Gemini Vision and server pathology engine)
+      if (!isOffline) {
+        try {
+          const apiRes = await api.diagnoseDisease({
+            cropName: selectedCrop,
+            imageBase64: imagePreview,
+            fileName: uploadedFileName,
+            isOffline: false
+          });
+          if (apiRes && apiRes.data) {
+            result = apiRes.data;
+          }
+        } catch (serverErr) {
+          console.warn('Backend diagnosis endpoint unreachable or offline, using edge AI:', serverErr);
+        }
+      }
+
+      // If offline or backend failed/fell back, execute browser Edge AI scan
+      if (!result) {
+        result = await EdgeAiDiseaseScanner.scanLeaf(imagePreview, selectedCrop, isOffline, uploadedFileName);
+      }
+
       setDiagnosis(result);
       loadOfflineHistory();
     } catch (err) {

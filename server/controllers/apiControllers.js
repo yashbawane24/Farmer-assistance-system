@@ -95,12 +95,13 @@ export const CropController = {
 export const DiseaseController = {
     async diagnose(req, res, next) {
         try {
-            const { cropName, imageBase64, isOffline, farmId } = req.body;
+            const { cropName, imageBase64, isOffline, farmId, fileName } = req.body;
             const result = await DiseaseDetectionService.diagnoseImage({
                 cropName,
                 imageBase64,
                 isOffline: Boolean(isOffline),
-                farmId: farmId ? Number(farmId) : 1
+                farmId: farmId ? Number(farmId) : 1,
+                fileName: fileName || ''
             });
             res.json({ success: true, data: result });
         } catch (err) {
