@@ -1,38 +1,7 @@
 import { query, queryOne, run } from '../models/db.js';
+import { findDistrict } from '../config/maharashtra.js';
 
-// Coordinates of major agricultural districts across India for live accurate meteorological data
-const DISTRICT_COORDINATES = {
-    'nashik': { lat: 19.9975, lon: 73.7898 },
-    'nagpur': { lat: 21.1458, lon: 79.0882 },
-    'pune': { lat: 18.5204, lon: 73.8567 },
-    'aurangabad': { lat: 19.8762, lon: 75.3433 },
-    'chhatrapati sambhajinagar': { lat: 19.8762, lon: 75.3433 },
-    'amravati': { lat: 20.9374, lon: 77.7796 },
-    'kolhapur': { lat: 16.7050, lon: 74.2433 },
-    'solapur': { lat: 17.6599, lon: 75.9064 },
-    'jalgaon': { lat: 21.0077, lon: 75.5626 },
-    'ahmednagar': { lat: 19.0948, lon: 74.7480 },
-    'satara': { lat: 17.6805, lon: 73.9936 },
-    'sangli': { lat: 16.8524, lon: 74.5815 },
-    'indore': { lat: 22.7196, lon: 75.8577 },
-    'bhopal': { lat: 23.2599, lon: 77.4126 },
-    'ludhiana': { lat: 30.9010, lon: 75.8573 },
-    'karnal': { lat: 29.6857, lon: 76.9905 },
-    'varanasi': { lat: 25.3176, lon: 82.9739 },
-    'lucknow': { lat: 26.8467, lon: 80.9462 },
-    'surat': { lat: 21.1702, lon: 72.8311 },
-    'rajkot': { lat: 22.3039, lon: 70.8022 },
-    'ahmedabad': { lat: 23.0225, lon: 72.5714 },
-    'guntur': { lat: 16.3067, lon: 80.4365 },
-    'warangal': { lat: 17.9689, lon: 79.5941 },
-    'hyderabad': { lat: 17.3850, lon: 78.4867 },
-    'bengaluru': { lat: 12.9716, lon: 77.5946 },
-    'belagavi': { lat: 15.8497, lon: 74.4977 },
-    'jaipur': { lat: 26.9124, lon: 75.7873 },
-    'patna': { lat: 25.5941, lon: 85.1376 },
-    'delhi': { lat: 28.6139, lon: 77.2090 },
-    'mumbai': { lat: 19.0760, lon: 72.8777 }
-};
+// District coordinates come from the shared Maharashtra config (all 36 districts)
 
 // In-memory cache to prevent excessive external requests and provide sub-millisecond responses
 const weatherCache = new Map();
@@ -125,8 +94,11 @@ export class WeatherService {
             return cached.data;
         }
 
-        const coords = DISTRICT_COORDINATES[key] || DISTRICT_COORDINATES['nashik'];
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FKolkata`;
+        const dConfig = findDistrict(district);
+        const lat = dConfig?.lat ?? 19.9975;
+        const lon = dConfig?.lon ?? 73.7898;
+
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum&timezone=Asia%2FKolkata`;
 
         try {
             const controller = new AbortController();

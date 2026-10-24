@@ -1,17 +1,88 @@
 import { query, queryOne, run } from '../models/db.js';
 
 export class AuthService {
-    static async login(email, password) {
-        const user = await queryOne("SELECT * FROM users WHERE email = ?", [email.toLowerCase().trim()]);
-        if (!user || user.password_hash !== password) {
-            throw new Error('Invalid email or password');
+    static async login(identifier, password) {
+        if (!identifier || !password) {
+            const err = new Error('Email/phone and password are required');
+            err.status = 400;
+            err.code = 'MISSING_CREDENTIALS';
+            throw err;
+        }
+
+        const trimmedId = identifier.toString().trim();
+        const trimmedPass = password.toString().trim();
+
+        // 1. First attempt: match by email (case-insensitive)
+        let user = await queryOne("SELECT * FROM users WHERE LOWER(email) = ?", [trimmedId.toLowerCase()]);
+
+        // 2. Second attempt: match by phone number in farmer_profiles
+        if (!user) {
+            const digits = trimmedId.replace(/\D/g, '');
+            if (digits.length >= 7) {
+                const last10 = digits.slice(-10);
+                const profiles = await query("SELECT user_id, phone FROM farmer_profiles WHERE phone IS NOT NULL");
+                
+                // Collect user IDs matching this phone number
+                const matchingUserIds = [];
+                for (const p of profiles) {
+                    const pDigits = (p.phone || '').replace(/\D/g, '');
+                    if (pDigits.endsWith(last10) || last10.endsWith(pDigits)) {
+                        matchingUserIds.push(p.user_id);
+                    }
+                }
+
+                if (matchingUserIds.length > 0) {
+                    // Check if any matching user matches the given password
+                    for (const uId of matchingUserIds) {
+                        const candidate = await queryOne("SELECT * FROM users WHERE id = ?", [uId]);
+                        if (candidate && (candidate.password_hash === password || candidate.password_hash === trimmedPass)) {
+                            user = candidate;
+                            break;
+                        }
+                    }
+                    // If none matched the password directly, select the latest user for credential validation error
+                    if (!user) {
+                        user = await queryOne("SELECT * FROM users WHERE id = ?", [matchingUserIds[matchingUserIds.length - 1]]);
+                    }
+                }
+            }
+        }
+
+        if (!user) {
+            const err = new Error('No account found with this email or phone number. Please check or register.');
+            err.status = 401;
+            err.code = 'USER_NOT_FOUND';
+            throw err;
+        }
+
+        const isPasswordMatch = user.password_hash === password || user.password_hash === trimmedPass;
+        if (!isPasswordMatch) {
+            const err = new Error('Invalid password. Please check your credentials.');
+            err.status = 401;
+            err.code = 'INVALID_PASSWORD';
+            throw err;
         }
 
         // Fetch associated farmer profile and farm
-        const profile = await queryOne("SELECT * FROM farmer_profiles WHERE user_id = ?", [user.id]);
-        const farm = profile ? await queryOne("SELECT * FROM farms WHERE farmer_profile_id = ?", [profile.id]) : null;
+        let profile = await queryOne("SELECT * FROM farmer_profiles WHERE user_id = ?", [user.id]);
+        if (!profile) {
+            const profRes = await run(
+                "INSERT INTO farmer_profiles (user_id, phone, district, state, farmer_type) VALUES (?, ?, 'Nashik', 'Maharashtra', 'Smallholder (< 2 Ha)')",
+                [user.id, '+91 98000 00000']
+            );
+            profile = await queryOne("SELECT * FROM farmer_profiles WHERE id = ?", [profRes.lastInsertRowid]);
+        }
 
-        // Generate demo session token
+        let farm = await queryOne("SELECT * FROM farms WHERE farmer_profile_id = ?", [profile.id]);
+        if (!farm) {
+            const farmRes = await run(
+                "INSERT INTO farms (farmer_profile_id, farm_name, land_size_acres, soil_type, water_source, water_reliability, current_crop, crop_stage) VALUES (?, ?, 2.0, 'Black Soil (Regur)', 'Borewell & Drip', 'Moderately Reliable', 'Tomato', 'Vegetative Stage')",
+                [profile.id, `${user.full_name}'s Farm Plot`]
+            );
+            farm = await queryOne("SELECT * FROM farms WHERE id = ?", [farmRes.lastInsertRowid]);
+        }
+
+        // Generate session token
         const token = `sfas_token_${user.id}_${Date.now()}`;
 
         return {
@@ -43,7 +114,10 @@ export class AuthService {
     }) {
         const existing = await queryOne("SELECT id FROM users WHERE email = ?", [email.toLowerCase().trim()]);
         if (existing) {
-            throw new Error('User already exists with this email address');
+            const err = new Error('User already exists with this email address');
+            err.status = 409;
+            err.code = 'USER_EXISTS';
+            throw err;
         }
 
         const userResult = await run(
