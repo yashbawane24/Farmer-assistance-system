@@ -81,10 +81,14 @@ CREATE TABLE IF NOT EXISTS mandi_prices (
 
 CREATE TABLE IF NOT EXISTS transport_pools (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    mandi_id INTEGER NOT NULL,
-    crop_id INTEGER NOT NULL,
+    mandi_id INTEGER,
+    destination_mandi TEXT NOT NULL,
+    crop_id INTEGER,
+    crop_name TEXT NOT NULL,
     scheduled_date DATE NOT NULL,
+    departure_time TEXT DEFAULT '07:00 AM',
     pickup_hub TEXT NOT NULL,
+    pickup_district TEXT NOT NULL DEFAULT 'Nashik',
     current_produce_quintal REAL DEFAULT 0,
     capacity_quintal REAL NOT NULL,
     vehicle_type TEXT NOT NULL,
@@ -100,6 +104,7 @@ CREATE TABLE IF NOT EXISTS transport_pools (
 CREATE TABLE IF NOT EXISTS transport_pool_members (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     pool_id INTEGER NOT NULL,
+    user_id INTEGER,
     farmer_name TEXT NOT NULL,
     phone TEXT,
     produce_quantity_quintal REAL NOT NULL,
@@ -172,4 +177,29 @@ CREATE TABLE IF NOT EXISTS knowledge_documents (
     crop_name TEXT,
     keywords TEXT NOT NULL,
     content TEXT NOT NULL
+);
+
+-- Real daily APMC prices for Maharashtra from Agmarknet (data.gov.in), one row per commodity/variety/market/day
+CREATE TABLE IF NOT EXISTS live_mandi_prices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    commodity TEXT NOT NULL,
+    crop_name TEXT NOT NULL,
+    variety TEXT NOT NULL DEFAULT 'Other',
+    market TEXT NOT NULL,
+    district TEXT NOT NULL,
+    state TEXT NOT NULL,
+    arrival_date DATE NOT NULL,
+    min_price_quintal REAL NOT NULL,
+    max_price_quintal REAL NOT NULL,
+    modal_price_quintal REAL NOT NULL,
+    source TEXT DEFAULT 'agmarknet',
+    fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (commodity, variety, market, arrival_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_live_mandi_prices_date ON live_mandi_prices (arrival_date);
+
+CREATE TABLE IF NOT EXISTS app_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT
 );
