@@ -2,25 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Truck, TrendingUp, Users, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck, DollarSign } from 'lucide-react';
 import { api } from '../services/api.js';
 import { AudioSpeaker } from '../components/AudioSpeaker.jsx';
-import { getTranslation, translateCropName, translateDayName } from '../services/i18n.js';
+import { getTranslation, translateCropName } from '../services/i18n.js';
+import { DistrictSelect } from '../components/DistrictSelect.jsx';
+import { MANDI_CROPS, isMaharashtraDistrict, districtLabel } from '../config/maharashtra.js';
 
 export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
   const t = getTranslation(lang);
 
   const [selectedCrop, setSelectedCrop] = useState(activeProfile?.currentCrop || 'Tomato');
   const [produceQuantity, setProduceQuantity] = useState(activeProfile?.landSize ? Math.round(activeProfile.landSize * 15) : 25);
-  const [district, setDistrict] = useState(activeProfile?.district || 'India');
+  const [district, setDistrict] = useState(isMaharashtraDistrict(activeProfile?.district) ? activeProfile.district : 'Nashik');
 
   const [comparisonData, setComparisonData] = useState(null);
   const [priceTrend, setPriceTrend] = useState([]);
-  const [transportPools, setTransportPools] = useState([]);
-  const [selectedPool, setSelectedPool] = useState(null);
-  const [poolJoinedMsg, setPoolJoinedMsg] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (activeProfile?.currentCrop) setSelectedCrop(activeProfile.currentCrop);
-    if (activeProfile?.district) setDistrict(activeProfile.district);
+    if (isMaharashtraDistrict(activeProfile?.district)) setDistrict(activeProfile.district);
   }, [activeProfile]);
 
   useEffect(() => {
@@ -30,14 +29,12 @@ export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
   const loadMandiData = async () => {
     setLoading(true);
     try {
-      const [compRes, trendRes, poolsRes] = await Promise.all([
+      const [compRes, trendRes] = await Promise.all([
         api.compareMandis(selectedCrop, produceQuantity, district),
-        api.getMandiPriceTrend(selectedCrop),
-        api.getTransportPools()
+        api.getMandiPriceTrend(selectedCrop)
       ]);
       setComparisonData(compRes);
       setPriceTrend(trendRes);
-      setTransportPools(poolsRes);
     } catch (e) {
       console.error(e);
     } finally {
@@ -45,21 +42,8 @@ export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
     }
   };
 
-  const handleJoinPool = async (poolId) => {
-    try {
-      const res = await api.joinTransportPool({
-        poolId,
-        farmerName: activeProfile?.fullName || (lang === 'hi' ? 'पंजीकृत किसान' : lang === 'mr' ? 'नोंदणीकृत शेतकरी' : 'Registered Farmer'),
-        phone: activeProfile?.phone || '+91 90000 00000',
-        produceQuantityQuintal: produceQuantity
-      });
-      setPoolJoinedMsg(t.mandi.joinedSuccess);
-      loadMandiData();
-      setTimeout(() => setPoolJoinedMsg(null), 6000);
-    } catch (e) {
-      alert(e.message);
-    }
-  };
+  const bestMandi = comparisonData?.mandis?.find(m => m.isBestNetRealization) || comparisonData?.mandis?.[0];
+  const bestMandiName = bestMandi?.mandiName || (lang === 'hi' ? 'सर्वोत्तम मंडी' : lang === 'mr' ? 'सर्वोत्तम बाजार' : 'Best Mandi');
 
   return (
     <div className="container" style={{ padding: '36px var(--space-md) 64px var(--space-md)' }}>
@@ -104,10 +88,10 @@ export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
               backgroundColor: 'var(--color-canvas-surface)'
             }}
           >
-            <option value="Tomato">{translateCropName('Tomato', lang)}</option>
-            <option value="Onion">{translateCropName('Onion', lang)}</option>
-            <option value="Wheat">{translateCropName('Wheat', lang)}</option>
-            <option value="Chilli">{translateCropName('Chilli', lang)}</option>
+            {MANDI_CROPS.map((c) => (
+              <option key={c} value={c}>{translateCropName(c, lang)}</option>
+            ))}
+            {!MANDI_CROPS.includes(selectedCrop) && <option value={selectedCrop}>{translateCropName(selectedCrop, lang)}</option>}
           </select>
         </div>
 
@@ -163,11 +147,84 @@ export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
           <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
             {t.mandi.originLabel}
           </label>
-          <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-primary-forest)', display: 'inline-block', paddingTop: '6px' }}>
-            📍 {district}
-          </span>
+          <DistrictSelect
+            value={district}
+            onChange={setDistrict}
+            lang={lang}
+            style={{
+              padding: '8px 14px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1.5px solid var(--color-border-strong)',
+              fontSize: '0.95rem',
+              fontWeight: 600,
+              backgroundColor: 'var(--color-canvas-surface)'
+            }}
+          />
         </div>
       </div>
+
+      {/* LIVE DATA SOURCE STATUS */}
+      {comparisonData && (
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '8px 16px',
+          alignItems: 'center',
+          fontSize: '0.85rem',
+          color: 'var(--color-text-muted)',
+          marginTop: '-16px',
+          marginBottom: '24px'
+        }}>
+          <span>
+            📡 {lang === 'mr' ? 'स्रोत: Agmarknet, भारत सरकार' : lang === 'hi' ? 'स्रोत: Agmarknet, भारत सरकार' : 'Source: Agmarknet, Government of India'}
+          </span>
+          {comparisonData.latestArrivalDate && (
+            <span>
+              🗓️ {lang === 'mr' ? 'नवीनतम आवक दिनांक' : lang === 'hi' ? 'नवीनतम आवक तिथि' : 'Latest arrival date'}: <strong>{comparisonData.latestArrivalDate}</strong>
+            </span>
+          )}
+          <span>
+            🏪 {comparisonData.totalMandisReporting} {lang === 'mr' ? 'बाजार समित्यांचे दर (मागील १५ दिवस)' : lang === 'hi' ? 'मंडियों के भाव (पिछले 15 दिन)' : 'Maharashtra APMCs reporting (last 15 days)'}
+          </span>
+          {comparisonData.crop?.msp && (
+            <span>
+              🛡️ MSP: <strong>₹{comparisonData.crop.msp.toLocaleString('en-IN')}/q</strong> ({comparisonData.crop.mspYear})
+            </span>
+          )}
+        </div>
+      )}
+
+      {comparisonData && comparisonData.mandis.length === 0 && (
+        <div style={{
+          backgroundColor: '#FEF3C7',
+          border: '1.5px solid #F59E0B',
+          borderRadius: 'var(--radius-md)',
+          padding: '18px 22px',
+          marginBottom: '32px',
+          color: '#92400E',
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'flex-start'
+        }}>
+          <AlertCircle size={22} style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: '0.92rem', lineHeight: 1.5 }}>
+            {!comparisonData.dataSource?.liveFeedConfigured
+              ? (lang === 'mr'
+                ? 'थेट बाजारभाव सुरू नाहीत: सर्व्हरवर DATA_GOV_API_KEY सेट केलेला नाही. data.gov.in वरून मोफत की घ्या.'
+                : lang === 'hi'
+                ? 'लाइव मंडी भाव चालू नहीं हैं: सर्वर पर DATA_GOV_API_KEY सेट नहीं है। data.gov.in से मुफ्त की लें।'
+                : 'Live mandi prices are not switched on: DATA_GOV_API_KEY is not set on the server. Get a free key from data.gov.in.')
+              : (lang === 'mr'
+                ? `मागील १५ दिवसांत महाराष्ट्रातील कोणत्याही बाजार समितीने ${translateCropName(selectedCrop, lang)} चा दर नोंदवलेला नाही.`
+                : lang === 'hi'
+                ? `पिछले 15 दिनों में महाराष्ट्र की किसी मंडी ने ${translateCropName(selectedCrop, lang)} का भाव दर्ज नहीं किया है।`
+                : `No Maharashtra APMC has reported a ${selectedCrop} price in the last 15 days.`)}
+            {comparisonData.dataSource?.syncError && comparisonData.dataSource?.liveFeedConfigured && (
+              <div style={{ fontSize: '0.8rem', marginTop: '4px' }}>({comparisonData.dataSource.syncError})</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* PROMINENT USABILITY INSIGHT BANNER */}
       {comparisonData?.insight && (
@@ -282,7 +339,10 @@ export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
                   {mandi.mandiName}
                 </h4>
                 <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                  {mandi.district} ({mandi.distanceKm} km {lang === 'hi' || lang === 'mr' ? 'खेत से दूर' : 'from farm'})
+                  {districtLabel(mandi.district, lang)} (~{mandi.distanceKm} km {lang === 'hi' ? 'अनुमानित दूरी' : lang === 'mr' ? 'अंदाजे अंतर' : 'est. road distance'})
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                  {mandi.variety} • {lang === 'hi' ? 'दिनांक' : lang === 'mr' ? 'दिनांक' : 'Reported'} {mandi.priceDate}
                 </div>
               </div>
 
@@ -293,13 +353,27 @@ export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
                   <strong style={{ fontSize: '1.05rem' }}>₹{mandi.quotedModalPriceQuintal}/q</strong>
                 </div>
 
+                <div className="math-breakdown-row" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                  <span>{lang === 'hi' ? 'न्यूनतम – अधिकतम:' : lang === 'mr' ? 'किमान – कमाल:' : 'Min – Max:'}</span>
+                  <span>₹{mandi.priceRange.min} – ₹{mandi.priceRange.max}</span>
+                </div>
+
+                {mandi.msp && (
+                  <div className="math-breakdown-row" style={{ fontSize: '0.8rem', fontWeight: 700, color: mandi.quotedModalPriceQuintal >= mandi.msp ? 'var(--color-leaf-green)' : 'var(--color-terracotta)' }}>
+                    <span>{mandi.quotedModalPriceQuintal >= mandi.msp
+                      ? (lang === 'hi' ? 'MSP से ऊपर' : lang === 'mr' ? 'हमीभावापेक्षा जास्त' : 'Above MSP')
+                      : (lang === 'hi' ? 'MSP से नीचे' : lang === 'mr' ? 'हमीभावापेक्षा कमी' : 'Below MSP')}</span>
+                    <span>{mandi.quotedModalPriceQuintal >= mandi.msp ? '+' : '-'}₹{Math.abs(mandi.quotedModalPriceQuintal - mandi.msp)}/q</span>
+                  </div>
+                )}
+
                 <div className="math-breakdown-row">
                   <span>{t.mandi.grossRealization} ({produceQuantity} q):</span>
                   <span>₹{mandi.economics.rawGrossRevenue.toLocaleString('en-IN')}</span>
                 </div>
 
                 <div className="math-breakdown-row" style={{ color: 'var(--color-terracotta)' }}>
-                  <span>{t.mandi.transportCost} ({mandi.distanceKm} km):</span>
+                  <span>{t.mandi.transportCost} (~{mandi.distanceKm} km × ₹{comparisonData.assumptions.freightRatePerKmQuintal}/q):</span>
                   <span>-₹{mandi.economics.totalTransportCost.toLocaleString('en-IN')}</span>
                 </div>
 
@@ -325,141 +399,135 @@ export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
         })}
       </div>
 
-      {/* SECTION: 7-DAY PRICE TREND VISUALIZATION */}
+      {/* SECTION: REAL PRICE HISTORY (built day by day from Agmarknet reports) */}
       <div className="card" style={{ marginBottom: '48px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary-forest)' }}>
               <TrendingUp size={22} />
-              <h3 style={{ fontSize: '1.25rem' }}>{lang === 'hi' ? '7-दिवसीय भाव और आवक रुझान' : lang === 'mr' ? '७ दिवसांचा बाजारभाव व आवक कल' : '7-Day Modal Price & Arrival Trend'}</h3>
+              <h3 style={{ fontSize: '1.25rem' }}>{lang === 'hi' ? 'भाव का रुझान (पिछले 30 दिन)' : lang === 'mr' ? 'बाजारभावाचा कल (मागील ३० दिवस)' : 'Price Trend (last 30 days)'}</h3>
             </div>
             <p style={{ fontSize: '0.85rem', marginTop: '2px', color: 'var(--color-text-muted)' }}>
               {lang === 'hi'
-                ? `${translateCropName(selectedCrop, lang)} के लिए पिछले 7 दिनों का मंडी भाव इतिहास`
+                ? `${translateCropName(selectedCrop, lang)} का महाराष्ट्र की मंडियों में औसत मॉडल भाव (₹/क्विंटल)`
                 : lang === 'mr'
-                ? `${translateCropName(selectedCrop, lang)} साठी मागील ७ दिवसांचे बाजार समिती दर`
-                : `Historical daily auction prices across regional benchmark APMCs for ${selectedCrop}.`}
+                ? `${translateCropName(selectedCrop, lang)} चा महाराष्ट्रातील बाजार समित्यांमधील सरासरी सर्वसाधारण दर (₹/क्विंटल)`
+                : `Average modal price of ${selectedCrop} across Maharashtra APMCs (₹/quintal)`}
             </p>
           </div>
-          <span className="badge badge-wheat">{lang === 'hi' ? 'सत्यापित मंडी भाव' : lang === 'mr' ? 'सत्यापित बाजारभाव' : 'APMC Verified Rates'}</span>
+          <span className="badge badge-wheat">Agmarknet • {lang === 'hi' || lang === 'mr' ? 'भारत सरकार' : 'Govt. of India'}</span>
         </div>
 
-        {/* Lightweight SVG Bar Visualization */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: '180px', paddingTop: '20px', borderBottom: '2px solid var(--color-border-strong)' }}>
-          {priceTrend.map((pt, idx) => {
-            const heightPercent = Math.max(25, Math.min(100, ((pt.price - 1800) / 1000) * 100));
-            return (
-              <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-primary-forest)' }}>₹{pt.price}</span>
-                <div
-                  style={{
-                    width: '36px',
-                    height: `${heightPercent}px`,
-                    backgroundColor: idx === priceTrend.length - 1 ? 'var(--color-primary-forest)' : 'var(--color-accent-wheat)',
-                    borderRadius: '4px 4px 0 0',
-                    transition: 'height 0.3s ease'
-                  }}
-                  title={`Arrivals: ${pt.arrivals} tonnes`}
-                />
-                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{translateDayName(pt.day, lang)}</span>
-              </div>
-            );
-          })}
-        </div>
+        {priceTrend.length >= 2 ? (() => {
+          const prices = priceTrend.map((pt) => pt.price);
+          const low = Math.min(...prices);
+          const high = Math.max(...prices);
+          const span = Math.max(high - low, 1);
+          return (
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', height: '200px', paddingTop: '20px', borderBottom: '2px solid var(--color-border-strong)', overflowX: 'auto' }}>
+              {priceTrend.map((pt, idx) => {
+                const heightPx = 30 + ((pt.price - low) / span) * 120;
+                return (
+                  <div key={pt.date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', minWidth: '44px', flex: 1 }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary-forest)' }}>₹{pt.price}</span>
+                    <div
+                      style={{
+                        width: '28px',
+                        height: `${heightPx}px`,
+                        backgroundColor: idx === priceTrend.length - 1 ? 'var(--color-primary-forest)' : 'var(--color-accent-wheat)',
+                        borderRadius: '4px 4px 0 0'
+                      }}
+                      title={`${pt.date}: ₹${pt.minPrice}–₹${pt.maxPrice}, ${pt.markets} APMC`}
+                    />
+                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{pt.day}</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })() : (
+          <p style={{ fontSize: '0.92rem', color: 'var(--color-text-muted)', padding: '24px 0', textAlign: 'center' }}>
+            {lang === 'hi'
+              ? 'अभी रुझान दिखाने के लिए पर्याप्त दिनों का डेटा नहीं है। हर दिन नए भाव जुड़ने पर यह चार्ट अपने-आप भर जाएगा।'
+              : lang === 'mr'
+              ? 'कल दाखवण्यासाठी अजून पुरेसे दिवसांचे दर नाहीत. रोज नवीन दर आल्यावर हा तक्ता आपोआप भरेल.'
+              : 'Not enough days of data yet to show a trend. This chart fills in automatically as new daily prices arrive.'}
+          </p>
+        )}
       </div>
 
-      {/* SECTION: NEARBY FARMER TRANSPORT POOLING */}
-      <div style={{
-        backgroundColor: '#FFFFFF',
-        borderRadius: 'var(--radius-lg)',
-        border: '1.5px solid var(--color-border-subtle)',
-        padding: '32px',
-        boxShadow: 'var(--shadow-md)'
-      }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', marginBottom: '20px' }}>
+      {/* SECTION: TRANSPORT POOLING CTA CARD */}
+      <div
+        style={{
+          backgroundColor: '#FFFFFF',
+          borderRadius: 'var(--radius-lg)',
+          border: '1.5px solid var(--color-border-subtle)',
+          padding: '28px 32px',
+          boxShadow: 'var(--shadow-sm)',
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '20px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', maxWidth: '720px' }}>
+          <div
+            style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '16px',
+              backgroundColor: '#EBF5ED',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}
+          >
+            <Truck size={28} color="var(--color-primary-forest)" />
+          </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary-forest)' }}>
-              <Truck size={24} color="var(--color-leaf-green)" />
-              <h3 style={{ fontSize: '1.35rem' }}>{t.mandi.poolsTitle}</h3>
-            </div>
-            <p style={{ fontSize: '0.92rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-              {t.mandi.poolsSubtitle}
+            <h4 style={{ margin: '0 0 6px 0', fontSize: '1.15rem', color: 'var(--color-primary-forest)', fontWeight: 800 }}>
+              {lang === 'mr'
+                ? `${bestMandiName} साठी एकत्र वाहन करून वाहतूक खर्च वाचवा`
+                : lang === 'hi'
+                ? `${bestMandiName} के लिए ट्रक साझा करें और भाड़ा बचाएं`
+                : `Share a truck to ${bestMandiName} and save on freight`}
+            </h4>
+            <p style={{ margin: 0, fontSize: '0.92rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+              {lang === 'mr'
+                ? 'परिसरातील इतर शेतकऱ्यांसोबत जागा शेअर करून प्रति क्विंटल ५०% पर्यंत वाहतूक खर्च कमी करा.'
+                : lang === 'hi'
+                ? 'आसपास के किसानों के साथ वाहन क्षमता साझा करके प्रति क्विंटल 50% तक भाड़ा कम करें।'
+                : 'Combine your produce with nearby farmers to slash per-quintal transportation costs by up to 50%.'}
             </p>
           </div>
-          <span className="badge badge-leaf">{t.mandi.savings}</span>
         </div>
 
-        {poolJoinedMsg && (
-          <div style={{ padding: '14px 18px', background: '#D2E4D4', color: '#1B382B', borderRadius: 'var(--radius-sm)', marginBottom: '20px', fontWeight: 700, fontSize: '0.9rem' }}>
-            ✅ {poolJoinedMsg}
-          </div>
-        )}
-
-        <div className="grid-3">
-          {transportPools.map((pool) => {
-            const fillPercent = Math.round((pool.current_produce_quintal / pool.capacity_quintal) * 100);
-            return (
-              <div
-                key={pool.id}
-                style={{
-                  border: '1.5px solid var(--color-border-strong)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '20px',
-                  backgroundColor: 'var(--color-canvas-surface)'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-primary-forest)' }}>{lang === 'hi' ? 'समूह' : lang === 'mr' ? 'गट' : 'Pool'} #{pool.id}: {translateCropName(pool.crop_name, lang)}</span>
-                  <span className="badge badge-wheat">{pool.vehicle_type}</span>
-                </div>
-
-                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '12px' }}>
-                  {lang === 'hi' ? 'स्थान:' : lang === 'mr' ? 'हब:' : 'Hub:'} <strong>{pool.pickup_hub}</strong> → {pool.mandi_name}
-                </div>
-
-                {/* Capacity progress */}
-                <div style={{ marginBottom: '14px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '4px' }}>
-                    <span>{t.mandi.capacityFilled}:</span>
-                    <strong>{pool.current_produce_quintal} / {pool.capacity_quintal} {lang === 'hi' || lang === 'mr' ? 'क्विंटल' : 'Quintals'} ({fillPercent}%)</strong>
-                  </div>
-                  <div style={{ width: '100%', height: '8px', background: 'var(--color-canvas-subtle)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${fillPercent}%`, height: '100%', background: 'var(--color-leaf-green)', borderRadius: '4px' }} />
-                  </div>
-                </div>
-
-                {/* Savings math */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px dashed var(--color-border-strong)', fontSize: '0.82rem' }}>
-                  <span>{lang === 'hi' ? 'अकेले का भाड़ा:' : lang === 'mr' ? 'एकट्याचा वाहतूक खर्च:' : 'Solo Transport Cost:'}</span>
-                  <span style={{ textDecoration: 'line-through', color: 'var(--color-text-muted)' }}>₹{pool.individual_freight_rate}/q</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px dashed var(--color-border-strong)', fontSize: '0.88rem', fontWeight: 800, color: 'var(--color-leaf-green)' }}>
-                  <span>{lang === 'hi' ? 'साझा भाड़ा दर:' : lang === 'mr' ? 'सामाईक भाडे दर:' : 'Pooled Freight Rate:'}</span>
-                  <span>₹{pool.pooled_freight_rate}/q (-{pool.savings_percentage}%)</span>
-                </div>
-
-                {/* Pool Members */}
-                <div style={{ marginTop: '12px', marginBottom: '16px' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
-                    {lang === 'hi' ? `समूह में जुड़े किसान (${pool.members?.length || 0}):` : lang === 'mr' ? `गटातील शेतकरी (${pool.members?.length || 0}):` : `Farmers in this Pool (${pool.members?.length || 0}):`}
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--color-text-main)' }}>
-                    {pool.members?.map(m => m.farmer_name).join(', ') || (lang === 'hi' ? 'अभी कोई सदस्य नहीं' : lang === 'mr' ? 'अद्याप सदस्य नाहीत' : 'No members yet')}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm btn-block"
-                  onClick={() => handleJoinPool(pool.id)}
-                >
-                  <Users size={15} />
-                  <span>{t.mandi.joinPool} ({produceQuantity} {lang === 'hi' || lang === 'mr' ? 'क्विंटल' : 'Quintals'})</span>
-                </button>
-              </div>
-            );
-          })}
-        </div>
+        <button
+          type="button"
+          className="btn btn-primary"
+          style={{ minHeight: '48px', padding: '0 24px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}
+          onClick={() => {
+            if (onNavigate) {
+              onNavigate('transport-pools', {
+                crop: selectedCrop,
+                mandi: bestMandi?.mandiName,
+                district: district,
+                quantity: produceQuantity
+              });
+            }
+          }}
+        >
+          <span>
+            {lang === 'mr'
+              ? 'वाहतूक गट पहा →'
+              : lang === 'hi'
+              ? 'परिवहन समूह देखें →'
+              : 'View transport pools →'}
+          </span>
+          <ArrowRight size={18} />
+        </button>
       </div>
     </div>
   );

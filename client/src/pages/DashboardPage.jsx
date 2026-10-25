@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { POPULAR_DISTRICTS } from '../config/maharashtra.js';
 import { 
   Search, Sprout, CloudRain, Sun, CloudSun, Moon, CloudMoon, Thermometer, Droplets, Wind,
   ShieldAlert, ShoppingBag, Mic, ArrowRight, CheckCircle2, AlertTriangle, 
@@ -15,12 +16,6 @@ import {
   translateFullDate 
 } from '../services/i18n.js';
 
-// Popular agricultural districts across India for instant weather accuracy
-const POPULAR_DISTRICTS = [
-  'Nashik', 'Nagpur', 'Pune', 'Aurangabad', 'Amravati', 'Kolhapur',
-  'Indore', 'Bhopal', 'Ludhiana', 'Karnal', 'Varanasi', 'Surat', 
-  'Rajkot', 'Guntur', 'Warangal', 'Belagavi', 'Jaipur', 'Patna'
-];
 
 // Status badge helper for crop stage and market viability
 function CropStatusIndicator({ label, status = 'ready' }) {

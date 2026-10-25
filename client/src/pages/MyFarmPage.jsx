@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { DistrictSelect } from '../components/DistrictSelect.jsx';
 import { Sprout, User, MapPin, Save, CheckCircle2 } from 'lucide-react';
 import { GuidedOptionPicker } from '../components/GuidedOptionPicker.jsx';
 import { api } from '../services/api.js';
@@ -159,9 +160,10 @@ export function MyFarmPage({ activeProfile, onUpdateProfile, lang }) {
             <label style={{ display: 'block', fontWeight: 600, fontSize: '0.88rem', marginBottom: '6px' }}>
               {t.myFarm.district}
             </label>
-            <select
+            <DistrictSelect
               value={district}
-              onChange={(e) => setDistrict(e.target.value)}
+              onChange={setDistrict}
+              lang={lang}
               style={{
                 width: '100%',
                 padding: '10px 14px',
@@ -170,13 +172,7 @@ export function MyFarmPage({ activeProfile, onUpdateProfile, lang }) {
                 fontSize: '0.95rem',
                 backgroundColor: 'var(--color-canvas-surface)'
               }}
-            >
-              <option value="Nashik">{lang === 'mr' ? 'नाशिक' : lang === 'hi' ? 'नासिक' : 'Nashik'}</option>
-              <option value="Pune">{lang === 'mr' ? 'पुणे' : lang === 'hi' ? 'पुणे' : 'Pune'}</option>
-              <option value="Ahmednagar">{lang === 'mr' ? 'अहमदनगर' : lang === 'hi' ? 'अहमदनगर' : 'Ahmednagar'}</option>
-              <option value="Karnal">{lang === 'mr' ? 'कर्नाल' : lang === 'hi' ? 'करनाल' : 'Karnal'}</option>
-              <option value="Guntur">{lang === 'mr' ? 'गुंटूर' : lang === 'hi' ? 'गुंटूर' : 'Guntur'}</option>
-            </select>
+            />
           </div>
 
           <div>
