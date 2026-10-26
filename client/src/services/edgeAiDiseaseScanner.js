@@ -86,7 +86,6 @@ export class EdgeAiDiseaseScanner {
         const spotClusterCount = spotBlocks.size;
 
         const cropLower = (cropName || '').toLowerCase();
-        const fileLower = (fileName || '').toLowerCase();
 
         // Disease Database with detailed agronomic prescriptions
         const diseaseCatalog = {
@@ -207,26 +206,7 @@ export class EdgeAiDiseaseScanner {
         // --- Multi-Criteria Diagnostic Decision Tree ---
         let diagnosisKey = null;
 
-        // 1. File name hints (if user uploaded from Google or file system with descriptive name)
-        if (fileLower.includes('early') || fileLower.includes('target') || fileLower.includes('alternaria')) {
-          diagnosisKey = 'early_blight';
-        } else if (fileLower.includes('late') || fileLower.includes('phytophthora') || (fileLower.includes('blight') && cropLower.includes('potato'))) {
-          diagnosisKey = 'late_blight';
-        } else if (fileLower.includes('mosaic') || fileLower.includes('yellow') || fileLower.includes('curl') || fileLower.includes('virus')) {
-          diagnosisKey = 'yellow_vein_mosaic';
-        } else if (fileLower.includes('rust') || fileLower.includes('puccinia')) {
-          diagnosisKey = 'rust';
-        } else if (fileLower.includes('mildew') || fileLower.includes('powdery')) {
-          diagnosisKey = 'powdery_mildew';
-        } else if (fileLower.includes('blast') || fileLower.includes('pyricularia') || (fileLower.includes('rice') && necrosisRatio > 0.015)) {
-          diagnosisKey = 'rice_blast';
-        } else if (fileLower.includes('spot') || fileLower.includes('xanthomonas') || fileLower.includes('bacterial')) {
-          diagnosisKey = 'bacterial_spot';
-        } else if (fileLower.includes('healthy') || fileLower.includes('clean')) {
-          diagnosisKey = 'healthy_leaf';
-        }
-
-        // 2. Visual Pixel Morphology Heuristics (Works on ANY photo from Google or camera)
+        // Visual pixel colour heuristics (rough offline estimate; the file name is never used)
         if (!diagnosisKey) {
           // Rust pustule pattern: high red/orange pustules
           if (rustRatio > 0.018 || (rustRatio > 0.008 && cropLower.includes('wheat'))) {
@@ -273,7 +253,7 @@ export class EdgeAiDiseaseScanner {
         const result = {
           ...template,
           crop: cropName || 'Tomato',
-          inferenceEngine: isNetworkOffline ? 'Local On-Device Edge Engine (Offline)' : 'Edge AI Vision Pathology Pipeline',
+          inferenceEngine: 'Offline colour-pattern estimate (not AI)',
           scannedAt: new Date().toISOString(),
           isOffline: isNetworkOffline
         };

@@ -6,6 +6,9 @@ import { offlineStorage } from '../services/offlineStorage.js';
 import { AudioSpeaker } from '../components/AudioSpeaker.jsx';
 import { getTranslation, translateCropName } from '../services/i18n.js';
 
+// Main crops of Maharashtra; Gemini also recognises other crops from the photo itself
+const SCAN_CROPS = ['Cotton', 'Soybean', 'Tur (Arhar)', 'Gram (Chana)', 'Onion', 'Tomato', 'Green Chilli', 'Potato', 'Wheat', 'Jowar', 'Rice (Paddy)', 'Grapes', 'Pomegranate', 'Sugarcane'];
+
 export function DiseaseScanPage({ activeProfile, lang, onNavigate }) {
   const t = getTranslation(lang);
   const fileInputRef = useRef(null);
@@ -18,6 +21,7 @@ export function DiseaseScanPage({ activeProfile, lang, onNavigate }) {
   const [diagnosis, setDiagnosis] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [offlineHistory, setOfflineHistory] = useState([]);
+  const [scanError, setScanError] = useState('');
 
   useEffect(() => {
     if (activeProfile?.currentCrop) {
@@ -48,53 +52,26 @@ export function DiseaseScanPage({ activeProfile, lang, onNavigate }) {
     }
   };
 
-  // Sample Demo Leaf Images for quick 1-click testing
+  // Real sample leaf photos (client/public/samples) for quick 1-click testing
   const sampleLeaves = [
-    { label: t.disease.sampleBlight, crop: 'Tomato', color: '#D4A373', type: 'blight', file: 'tomato_early_blight.jpg' },
-    { label: t.disease.samplePurple, crop: 'Onion', color: '#B08968', type: 'purple', file: 'onion_purple_blotch.jpg' },
-    { label: t.disease.sampleRust, crop: 'Wheat', color: '#E9C46A', type: 'rust', file: 'wheat_stripe_rust.jpg' },
-    { label: t.disease.sampleHealthy, crop: 'Tomato', color: '#386641', type: 'healthy', file: 'healthy_crop_leaf.jpg' }
+    { label: t.disease.sampleBlight, crop: 'Tomato', color: '#D4A373', file: 'tomato_early_blight.jpg' },
+    { label: lang === 'hi' ? 'आलू पछेती झुलसा' : lang === 'mr' ? 'बटाटा उशिरा करपा' : 'Potato Late Blight', crop: 'Potato', color: '#B08968', file: 'potato_late_blight.jpg' },
+    { label: t.disease.sampleHealthy, crop: 'Tomato', color: '#386641', file: 'healthy_crop_leaf.jpg' }
   ];
 
-  const handleSelectSample = (sample) => {
+  const handleSelectSample = async (sample) => {
     setSelectedCrop(sample.crop);
     setUploadedFileName(sample.file);
-    const canvas = document.createElement('canvas');
-    canvas.width = 320;
-    canvas.height = 320;
-    const ctx = canvas.getContext('2d');
-    
-    ctx.fillStyle = sample.type === 'healthy' ? '#2E6F40' : '#4E6A38';
-    ctx.beginPath();
-    ctx.ellipse(160, 160, 110, 140, Math.PI / 4, 0, 2 * Math.PI);
-    ctx.fill();
-
-    ctx.strokeStyle = '#275231';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(70, 70);
-    ctx.lineTo(250, 250);
-    ctx.stroke();
-
-    if (sample.type === 'blight') {
-      ctx.fillStyle = '#4A2810';
-      ctx.beginPath();
-      ctx.arc(140, 140, 30, 0, 2 * Math.PI);
-      ctx.fill();
-      ctx.fillStyle = '#C89D30';
-      ctx.beginPath();
-      ctx.arc(140, 140, 42, 0, 2 * Math.PI);
-      ctx.stroke();
-    } else if (sample.type === 'rust') {
-      ctx.fillStyle = '#E59819';
-      for (let i = 0; i < 6; i++) {
-        ctx.fillRect(100 + (i * 18), 100 + (i * 18), 12, 35);
-      }
-    }
-
-    const dataUrl = canvas.toDataURL('image/jpeg');
-    setImagePreview(dataUrl);
     setDiagnosis(null);
+    setScanError('');
+    try {
+      const blob = await (await fetch(`/samples/${sample.file}`)).blob();
+      const reader = new FileReader();
+      reader.onload = () => setImagePreview(reader.result);
+      reader.readAsDataURL(blob);
+    } catch (e) {
+      setScanError(lang === 'hi' ? 'नमूना फोटो लोड नहीं हो सकी।' : lang === 'mr' ? 'नमुना फोटो लोड होऊ शकला नाही.' : 'Could not load the sample photo.');
+    }
   };
 
   const handleFileUpload = (e) => {
@@ -106,6 +83,7 @@ export function DiseaseScanPage({ activeProfile, lang, onNavigate }) {
     reader.onload = () => {
       setImagePreview(reader.result);
       setDiagnosis(null);
+      setScanError('');
     };
     reader.readAsDataURL(file);
   };
@@ -113,36 +91,43 @@ export function DiseaseScanPage({ activeProfile, lang, onNavigate }) {
   const handleRunAnalysis = async () => {
     if (!imagePreview) return;
     setAnalyzing(true);
+    setScanError('');
+    setDiagnosis(null);
 
     try {
       let result = null;
+      let useOfflineEstimate = isOffline;
 
-      // When online, call backend API first (which supports Gemini Vision and server pathology engine)
+      // Online: real AI diagnosis by Google Gemini Vision on the server
       if (!isOffline) {
         try {
-          const apiRes = await api.diagnoseDisease({
+          result = await api.diagnoseDisease({
             cropName: selectedCrop,
             imageBase64: imagePreview,
-            fileName: uploadedFileName,
-            isOffline: false
+            language: lang
           });
-          if (apiRes && apiRes.data) {
-            result = apiRes.data;
-          }
         } catch (serverErr) {
-          console.warn('Backend diagnosis endpoint unreachable or offline, using edge AI:', serverErr);
+          if (serverErr.status) {
+            // The server answered with a real error (AI not configured, not a leaf photo, quota...). Show it.
+            setScanError(serverErr.message);
+            return;
+          }
+          // Server unreachable (no network): fall back to the on-device estimate
+          useOfflineEstimate = true;
         }
       }
 
-      // If offline or backend failed/fell back, execute browser Edge AI scan
-      if (!result) {
-        result = await EdgeAiDiseaseScanner.scanLeaf(imagePreview, selectedCrop, isOffline, uploadedFileName);
+      // Offline: rough on-device colour-pattern estimate, clearly labelled as such
+      if (!result && useOfflineEstimate) {
+        result = await EdgeAiDiseaseScanner.scanLeaf(imagePreview, selectedCrop, true, uploadedFileName);
+        result = { ...result, isOfflineEstimate: true, confidence: null }; // heuristic has no real confidence
       }
 
       setDiagnosis(result);
       loadOfflineHistory();
     } catch (err) {
       console.error('Scan error:', err);
+      setScanError(err.message);
     } finally {
       setAnalyzing(false);
     }
@@ -202,12 +187,10 @@ export function DiseaseScanPage({ activeProfile, lang, onNavigate }) {
                 width: '100%'
               }}
             >
-              <option value="Tomato">{translateCropName('Tomato', lang)}</option>
-              <option value="Onion">{translateCropName('Onion', lang)}</option>
-              <option value="Wheat">{translateCropName('Wheat', lang)}</option>
-              <option value="Cotton">{translateCropName('Cotton', lang)}</option>
-              <option value="Potato">{translateCropName('Potato', lang)}</option>
-              <option value="Chilli">{translateCropName('Chilli', lang)}</option>
+              {SCAN_CROPS.map((c) => (
+                <option key={c} value={c}>{translateCropName(c, lang)}</option>
+              ))}
+              {!SCAN_CROPS.includes(selectedCrop) && <option value={selectedCrop}>{translateCropName(selectedCrop, lang)}</option>}
             </select>
           </div>
 
@@ -338,6 +321,21 @@ export function DiseaseScanPage({ activeProfile, lang, onNavigate }) {
 
         {/* Right Column: Diagnostic Report & Action Plan */}
         <div>
+          {scanError && (
+            <div className="card" style={{ borderLeft: '6px solid var(--color-terracotta)', marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+              <AlertTriangle size={22} color="var(--color-terracotta)" style={{ flexShrink: 0 }} />
+              <div style={{ fontSize: '0.95rem', lineHeight: 1.5 }}>{scanError}</div>
+            </div>
+          )}
+          {diagnosis?.isOfflineEstimate && (
+            <div style={{ backgroundColor: '#FEF3C7', border: '1.5px solid #F59E0B', color: '#92400E', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: '16px', fontSize: '0.88rem', lineHeight: 1.5 }}>
+              {lang === 'hi'
+                ? '⚠️ ऑफलाइन अनुमान: यह परिणाम केवल पत्ती के रंगों के आधार पर है, AI से नहीं। इंटरनेट मिलने पर दोबारा स्कैन करें या कृषि विज्ञान केंद्र से पुष्टि करें।'
+                : lang === 'mr'
+                ? '⚠️ ऑफलाइन अंदाज: हा निकाल फक्त पानाच्या रंगांवर आधारित आहे, AI ने केलेला नाही. इंटरनेट आल्यावर पुन्हा स्कॅन करा किंवा कृषी विज्ञान केंद्राकडून खात्री करा.'
+                : '⚠️ Offline estimate: this result is based only on leaf colour patterns, not the AI. Re-scan when you are online, or confirm with your Krishi Vigyan Kendra before spraying.'}
+            </div>
+          )}
           {diagnosis ? (
             <div className="card" style={{ borderLeft: `6px solid ${diagnosis.severity === 'None' ? 'var(--color-leaf-green)' : 'var(--color-terracotta)'}` }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
@@ -362,13 +360,27 @@ export function DiseaseScanPage({ activeProfile, lang, onNavigate }) {
 
               {/* Confidence Meter */}
               <div style={{ marginBottom: '20px', padding: '14px', background: 'var(--color-canvas-surface)', borderRadius: 'var(--radius-md)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{t.disease.confidence}:</span>
-                  <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-primary-forest)' }}>{diagnosis.confidence}%</span>
-                </div>
-                <div style={{ width: '100%', height: '8px', background: 'var(--color-canvas-subtle)', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: `${diagnosis.confidence}%`, height: '100%', background: 'var(--color-leaf-green)', borderRadius: '4px' }} />
-                </div>
+                {diagnosis.confidence != null && (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{t.disease.confidence}:</span>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-primary-forest)' }}>{diagnosis.confidence}%</span>
+                    </div>
+                    <div style={{ width: '100%', height: '8px', background: 'var(--color-canvas-subtle)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: `${diagnosis.confidence}%`, height: '100%', background: diagnosis.confidence >= 70 ? 'var(--color-leaf-green)' : 'var(--color-accent-wheat)', borderRadius: '4px' }} />
+                    </div>
+                  </>
+                )}
+                {diagnosis.inferenceEngine && (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '6px' }}>
+                    {lang === 'hi' ? 'विश्लेषण:' : lang === 'mr' ? 'विश्लेषण:' : 'Analysed by:'} {diagnosis.inferenceEngine}
+                  </div>
+                )}
+                {diagnosis.visualSymptoms && (
+                  <div style={{ fontSize: '0.85rem', marginTop: '8px', lineHeight: 1.5 }}>
+                    <strong>{lang === 'hi' ? 'दिखे लक्षण:' : lang === 'mr' ? 'दिसलेली लक्षणे:' : 'Visible symptoms:'}</strong> {diagnosis.visualSymptoms}
+                  </div>
+                )}
               </div>
 
               {/* Immediate Cultural Actions */}
@@ -414,7 +426,7 @@ export function DiseaseScanPage({ activeProfile, lang, onNavigate }) {
                 </button>
               </div>
             </div>
-          ) : (
+          ) : !scanError && (
             <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
               <div style={{ color: 'var(--color-border-strong)', marginBottom: '12px' }}>
                 <AlertTriangle size={42} />
@@ -427,7 +439,7 @@ export function DiseaseScanPage({ activeProfile, lang, onNavigate }) {
                   ? 'रोग की त्वरित जांच के लिए बाईं ओर पत्ती की फोटो अपलोड करें या नमुना चुनें।'
                   : lang === 'mr'
                   ? 'पानावरील रोगाची तात्काळ तपासणी करण्यासाठी डाव्या बाजूला फोटो निवडा.'
-                  : 'Upload or select a leaf photo on the left to run local on-device machine learning diagnostic inspection.'}
+                  : 'Upload or select a leaf photo on the left, then tap Scan to get an AI diagnosis.'}
               </p>
             </div>
           )}
@@ -441,7 +453,7 @@ export function DiseaseScanPage({ activeProfile, lang, onNavigate }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {offlineHistory.slice(0, 3).map((item, idx) => (
                   <div key={idx} style={{ padding: '8px 12px', background: '#FFFFFF', border: '1px solid var(--color-border-subtle)', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{translateCropName(item.crop, lang)}: <strong>{item.detectedDisease}</strong> ({item.confidence}%)</span>
+                    <span>{translateCropName(item.crop, lang)}: <strong>{item.detectedDisease}</strong> ({lang === 'hi' ? 'ऑफलाइन अनुमान' : lang === 'mr' ? 'ऑफलाइन अंदाज' : 'offline estimate'})</span>
                     <span style={{ color: 'var(--color-leaf-green)' }}>{lang === 'hi' ? 'फोन में सुरक्षित' : lang === 'mr' ? 'फोनमध्ये सेव्ह' : 'Saved locally'}</span>
                   </div>
                 ))}
