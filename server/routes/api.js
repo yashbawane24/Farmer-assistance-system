@@ -7,7 +7,9 @@ import {
     MandiController,
     WeatherAlertController,
     AgronomistController,
-    SchemeController
+    SchemeController,
+    RegionController,
+    PoolsController
 } from '../controllers/apiControllers.js';
 
 const router = express.Router();
@@ -22,6 +24,9 @@ router.get('/health', (req, res) => {
         version: '1.0.0'
     });
 });
+
+// Region served by SFAS (Maharashtra districts, crops, MSP)
+router.get('/region', RegionController.getConfig);
 
 // Authentication & Demo Profiles
 router.post('/auth/login', AuthController.login);
@@ -43,8 +48,17 @@ router.get('/disease/history', DiseaseController.getHistory);
 // Smart Mandi & Transport Pooling
 router.get('/mandi/compare', MandiController.compare);
 router.get('/mandi/trend', MandiController.getPriceTrend);
+router.get('/mandi/status', MandiController.getStatus);
+router.post('/mandi/sync', MandiController.sync);
 router.get('/mandi/pools', MandiController.getPools);
 router.post('/mandi/join-pool', MandiController.joinPool);
+
+// Dedicated Transport Pooling API
+router.get('/pools', PoolsController.list);
+router.get('/pools/mine', PoolsController.mine);
+router.post('/pools', PoolsController.create);
+router.post('/pools/:id/join', PoolsController.join);
+router.delete('/pools/:id/members/:userId', PoolsController.leave);
 
 // Weather & Preventative Alerts
 router.get('/weather/forecast', WeatherAlertController.getForecast);
@@ -53,6 +67,8 @@ router.get('/alerts/active', WeatherAlertController.getAlerts);
 
 // AI Voice Agronomist (RAG)
 router.post('/agronomist/ask', AgronomistController.consult);
+router.post('/agronomist/ask-stream', AgronomistController.consultStream);
+router.post('/agronomist/transcribe', AgronomistController.transcribe);
 
 // Government Schemes
 router.get('/schemes', SchemeController.list);
