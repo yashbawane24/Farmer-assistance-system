@@ -82,9 +82,9 @@ CREATE TABLE IF NOT EXISTS mandi_prices (
 CREATE TABLE IF NOT EXISTS transport_pools (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     mandi_id INTEGER,
-    destination_mandi TEXT NOT NULL,
+    destination_mandi TEXT DEFAULT 'Vashi APMC (Navi Mumbai Terminal)',
     crop_id INTEGER,
-    crop_name TEXT NOT NULL,
+    crop_name TEXT DEFAULT 'Tomato',
     scheduled_date DATE NOT NULL,
     departure_time TEXT DEFAULT '07:00 AM',
     pickup_hub TEXT NOT NULL,

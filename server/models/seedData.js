@@ -54,10 +54,10 @@ export async function seedDatabase() {
     // 6. Mandi prices are NOT seeded: real daily prices come from Agmarknet (see services/agmarknetService.js)
 
     // 7. Transport Logistics Pools
-    await run(`INSERT INTO transport_pools (id, mandi_id, crop_id, scheduled_date, pickup_hub, current_produce_quintal, capacity_quintal, vehicle_type, individual_freight_rate, pooled_freight_rate, savings_percentage, status) VALUES 
-        (1, 4, 1, '2026-09-24', 'Dindori Phata Farm Hub (Nashik)', 65.0, 100.0, 'Eicher 10-Ton Container', 395.0, 245.0, 38.0, 'Open'),
-        (2, 2, 2, '2026-09-25', 'Pimpalgaon Baswant Hub', 140.0, 160.0, 'Tata 16-Ton Multi-axle', 125.0, 80.0, 36.0, 'Open'),
-        (3, 5, 8, '2026-10-30', 'Ausa Phata Hub (Latur)', 110.0, 120.0, 'Ashok Leyland 12-Ton', 60.0, 38.0, 36.7, 'Open');`);
+    await run(`INSERT INTO transport_pools (id, mandi_id, destination_mandi, crop_id, crop_name, scheduled_date, departure_time, pickup_hub, pickup_district, current_produce_quintal, capacity_quintal, vehicle_type, individual_freight_rate, pooled_freight_rate, savings_percentage, status) VALUES 
+        (1, 4, 'Vashi APMC (Navi Mumbai Terminal)', 1, 'Tomato', '2026-10-30', '06:00 AM', 'Dindori Phata Farm Hub (Nashik)', 'Nashik', 65.0, 100.0, 'Eicher 10-Ton Container', 395.0, 245.0, 38.0, 'Open'),
+        (2, 2, 'Lasalgaon APMC (Asia Largest Onion Yard)', 2, 'Onion', '2026-10-31', '05:30 AM', 'Pimpalgaon Baswant Hub', 'Nashik', 140.0, 160.0, 'Tata 16-Ton Multi-axle', 125.0, 80.0, 36.0, 'Open'),
+        (3, 5, 'Latur APMC (Soybean & Tur Market)', 8, 'Soybean', '2026-11-02', '07:00 AM', 'Ausa Phata Hub (Latur)', 'Latur', 110.0, 120.0, 'Ashok Leyland 12-Ton', 60.0, 38.0, 36.7, 'Open');`);
 
     // 8. Transport Pool Members
     await run(`INSERT INTO transport_pool_members (pool_id, farmer_name, phone, produce_quantity_quintal) VALUES 
