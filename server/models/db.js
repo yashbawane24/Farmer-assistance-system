@@ -21,17 +21,16 @@ export async function getDb() {
 
     SQL = await initSqlJs();
 
-    let buffer = null;
     if (fs.existsSync(DB_FILE)) {
-        buffer = fs.readFileSync(DB_FILE);
-        dbInstance = new SQL.Database(buffer);
+        dbInstance = new SQL.Database(fs.readFileSync(DB_FILE));
     } else {
         dbInstance = new SQL.Database();
-        if (fs.existsSync(SCHEMA_FILE)) {
-            const schemaSql = fs.readFileSync(SCHEMA_FILE, 'utf8');
-            dbInstance.run(schemaSql);
-            saveDb();
-        }
+    }
+
+    // Schema uses CREATE ... IF NOT EXISTS, so running it on an existing database adds any new tables
+    if (fs.existsSync(SCHEMA_FILE)) {
+        dbInstance.run(fs.readFileSync(SCHEMA_FILE, 'utf8'));
+        saveDb();
     }
 
     return dbInstance;
@@ -82,10 +81,33 @@ export async function run(sql, params = []) {
     return { lastInsertRowid: lastId };
 }
 
+/**
+ * Run many statements in one transaction and save the database file once
+ */
+export async function runBatch(sql, rowsParams = []) {
+    const db = await getDb();
+    const stmt = db.prepare(sql);
+    db.run('BEGIN');
+    try {
+        for (const params of rowsParams) {
+            stmt.run(params);
+        }
+        db.run('COMMIT');
+    } catch (err) {
+        db.run('ROLLBACK');
+        throw err;
+    } finally {
+        stmt.free();
+    }
+    saveDb();
+    return rowsParams.length;
+}
+
 export default {
     getDb,
     saveDb,
     query,
     queryOne,
-    run
+    run,
+    runBatch
 };

@@ -11,3 +11,9 @@ services:
         value: production
       - key: PORT
         value: 10000
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: DATA_GOV_API_KEY
+        sync: false

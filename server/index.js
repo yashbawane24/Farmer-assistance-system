@@ -6,12 +6,15 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import apiRoutes from './routes/api.js';
 import { seedDatabase } from './models/seedData.js';
-
-dotenv.config();
+import { startMandiPriceScheduler } from './services/agmarknetService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const CLIENT_DIST = path.join(__dirname, '../client/dist');
+
+// Load environment variables from both root and server directory
+dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -22,7 +25,7 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '12mb' })); // leaf photos are sent as base64
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request Logger
@@ -89,6 +92,7 @@ async function startServer() {
         app.listen(PORT, () => {
             console.log(`🌾 SFAS Agricultural API running at http://localhost:${PORT}`);
             console.log(`🌱 Health check: http://localhost:${PORT}/api/health`);
+            startMandiPriceScheduler();
         });
     } catch (err) {
         console.error('Failed to start server:', err);

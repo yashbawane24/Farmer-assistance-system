@@ -1,5 +1,5 @@
 // SFAS Resilient Offline Service Worker
-const CACHE_NAME = 'sfas-cache-v2';
+const CACHE_NAME = 'sfas-cache-v3';
 
 self.addEventListener('install', (event) => {
   // Activate immediately without waiting for old tabs to close

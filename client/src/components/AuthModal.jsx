@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { DistrictSelect } from './DistrictSelect.jsx';
+import { REGION_STATE } from '../config/maharashtra.js';
 import { Sprout, Lock, Mail, Phone, MapPin, User, ArrowRight, ShieldCheck, CheckCircle2, X } from 'lucide-react';
 import { api } from '../services/api.js';
 import { getTranslation, translateCropName } from '../services/i18n.js';
@@ -17,7 +19,7 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess, lang = 'en' }) {
   const [phone, setPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [state, setState] = useState('Maharashtra');
+  const state = REGION_STATE; // SFAS serves Maharashtra farmers only
   const [district, setDistrict] = useState('');
   const [landSize, setLandSize] = useState(2.5);
   const [soilType, setSoilType] = useState('Black Soil (Regur)');
@@ -26,40 +28,21 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess, lang = 'en' }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Comprehensive list of all Indian States & Union Territories
-  const indianStates = [
-    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
-    'Delhi (NCR)', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh',
-    'Jammu & Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh',
-    'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland',
-    'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
-    'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
-  ];
 
   if (!isOpen) return null;
 
-  const handleLogin = async (e) => {
-    e?.preventDefault();
-    if (!email || !password) {
-      setErrorMsg(
-        lang === 'hi'
-          ? 'कृपया ईमेल और पासवर्ड दोनों दर्ज करें।'
-          : lang === 'mr'
-          ? 'कृपया ईमेल आणि पासवर्ड दोन्ही प्रविष्ट करा.'
-          : 'Please enter both email and password.'
-      );
-      return;
-    }
+  const executeLogin = async (loginIdentifier, loginPassword) => {
     setLoading(true);
     setErrorMsg('');
     try {
-      const res = await api.login(email, password);
+      const res = await api.login(loginIdentifier, loginPassword);
       onLoginSuccess({
         id: res.user.id,
         fullName: res.user.fullName,
         email: res.user.email,
-        district: res.profile?.district || 'India',
-        state: res.profile?.state || 'India',
+        phone: res.profile?.phone || '',
+        district: res.profile?.district || 'Nashik',
+        state: res.profile?.state || REGION_STATE,
         farmName: res.farm?.farm_name || `${res.user.fullName}'s Farm`,
         landSize: res.farm?.land_size_acres || 2.5,
         soilType: res.farm?.soil_type || 'Black Soil (Regur)',
@@ -72,14 +55,29 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess, lang = 'en' }) {
     } catch (err) {
       setErrorMsg(
         lang === 'hi'
-          ? 'अमान्य ईमेल या पासवर्ड। कृपया पुनः प्रयास करें।'
+          ? (err.status === 401 ? 'अमान्य ईमेल/फ़ोन या पासवर्ड।' : err.message || 'लॉगिन विफल हुआ।')
           : lang === 'mr'
-          ? 'अवैध ईमेल किंवा पासवर्ड. कृपया पुन्हा प्रयत्न करा.'
+          ? (err.status === 401 ? 'अवैध ईमेल/फोन किंवा पासवर्ड.' : err.message || 'लॉगिन अयशस्वी झाले.')
           : err.message || 'Invalid email or password. Please try again.'
       );
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogin = async (e) => {
+    e?.preventDefault();
+    if (!email || !password) {
+      setErrorMsg(
+        lang === 'hi'
+          ? 'कृपया ईमेल/फोन और पासवर्ड दोनों दर्ज करें।'
+          : lang === 'mr'
+          ? 'कृपया ईमेल/फोन आणि पासवर्ड दोन्ही प्रविष्ट करा.'
+          : 'Please enter both email/phone and password.'
+      );
+      return;
+    }
+    await executeLogin(email, password);
   };
 
   const handleRegister = async (e) => {
@@ -311,9 +309,12 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess, lang = 'en' }) {
                   {t.auth.emailOrPhone}
                 </label>
                 <input
-                  type="email"
+                  type="text"
                   required
-                  placeholder={t.auth.emailPlaceholder}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="username"
+                  placeholder={lang === 'hi' ? 'ईमेल या फ़ोन नंबर' : lang === 'mr' ? 'ईमेल किंवा फोन नंबर' : 'farmer@example.com or phone'}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   style={{
@@ -334,6 +335,7 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess, lang = 'en' }) {
                 <input
                   type="password"
                   required
+                  autoComplete="current-password"
                   placeholder={t.auth.passwordPlaceholder}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -468,40 +470,38 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess, lang = 'en' }) {
                 </div>
               </div>
 
-              {/* Pan-India Location Inputs */}
+              {/* Maharashtra Location Inputs */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#112019', marginBottom: '4px' }}>
                     {t.auth.stateUnion}
                   </label>
-                  <select
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
+                  <input
+                    type="text"
+                    value={lang === 'mr' ? 'महाराष्ट्र' : lang === 'hi' ? 'महाराष्ट्र' : state}
+                    readOnly
                     style={{
                       width: '100%',
                       padding: '10px 12px',
                       borderRadius: '8px',
                       border: '1.5px solid var(--color-border-strong)',
                       fontSize: '0.9rem',
-                      backgroundColor: 'var(--color-canvas-surface)'
+                      backgroundColor: 'var(--color-canvas-subtle)',
+                      fontWeight: 600
                     }}
-                  >
-                    {indianStates.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#112019', marginBottom: '4px' }}>
                     {t.auth.district} *
                   </label>
-                  <input
-                    type="text"
+                  <DistrictSelect
                     required
-                    placeholder={t.auth.districtPlaceholder}
                     value={district}
-                    onChange={(e) => setDistrict(e.target.value)}
+                    onChange={setDistrict}
+                    lang={lang}
+                    placeholder={lang === 'mr' ? 'जिल्हा निवडा' : lang === 'hi' ? 'जिला चुनें' : 'Select district'}
                     style={{
                       width: '100%',
                       padding: '10px 14px',

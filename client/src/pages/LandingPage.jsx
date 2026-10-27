@@ -382,7 +382,7 @@ export function LandingPage({ onNavigate, lang, onLanguageChange, onOpenAuth }) 
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#A3B0A7', marginBottom: '8px' }}>
-                    <span>{lang === 'hi' ? 'सक्रिय मार्ग: करनाल → आजादपुर राष्ट्रीय मंडी' : lang === 'mr' ? 'सक्रिय मार्ग: कर्नाल → आझादपूर राष्ट्रीय बाजार' : 'Active Corridor: Karnal → Azadpur National'}</span>
+                    <span>{lang === 'hi' ? 'सक्रिय मार्ग: औसा → लातूर APMC' : lang === 'mr' ? 'सक्रिय मार्ग: औसा → लातूर बाजार समिती' : 'Active Corridor: Ausa → Latur APMC'}</span>
                     <strong style={{ color: '#88D49E' }}>128 km</strong>
                   </div>
                   <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
