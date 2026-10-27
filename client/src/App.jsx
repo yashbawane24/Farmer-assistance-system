@@ -9,6 +9,7 @@ import { DashboardPage } from './pages/DashboardPage.jsx';
 import { CropAdvisorPage } from './pages/CropAdvisorPage.jsx';
 import { DiseaseScanPage } from './pages/DiseaseScanPage.jsx';
 import { SmartMandiPage } from './pages/SmartMandiPage.jsx';
+import { TransportPoolsPage } from './pages/TransportPoolsPage.jsx';
 import { WeatherAlertsPage } from './pages/WeatherAlertsPage.jsx';
 import { AiAgronomistPage } from './pages/AiAgronomistPage.jsx';
 import { GovernmentSchemesPage } from './pages/GovernmentSchemesPage.jsx';
@@ -22,6 +23,7 @@ import './styles/sidebar.css';
 
 export function App() {
   const [currentRoute, setCurrentRoute] = useState('home');
+  const [navigationParams, setNavigationParams] = useState(null);
   const [lang, setLang] = useState(() => localStorage.getItem('sfas_lang') || 'en');
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return Boolean(localStorage.getItem('sfas_authenticated'));
@@ -64,8 +66,9 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleNavigate = (route) => {
+  const handleNavigate = (route, params = null) => {
     setCurrentRoute(route);
+    setNavigationParams(params);
     setIsMobileSidebarOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -82,8 +85,8 @@ export function App() {
     id: 0,
     fullName: lang === 'hi' ? 'किसान भाई' : lang === 'mr' ? 'शेतकरी बंधू' : 'Farmer',
     phone: '',
-    district: lang === 'hi' || lang === 'mr' ? 'भारत' : 'India',
-    state: lang === 'hi' || lang === 'mr' ? 'भारत' : 'India',
+    district: 'Nashik',
+    state: 'Maharashtra',
     farmName: lang === 'hi' ? 'मेरा खेत प्लॉट' : lang === 'mr' ? 'माझे शेत प्लॉट' : 'My Farm Plot',
     landSize: 2.0,
     soilType: 'Black Soil (Regur)',
@@ -250,6 +253,15 @@ export function App() {
               activeProfile={effectiveProfile}
               lang={lang}
               onNavigate={handleNavigate}
+            />
+          )}
+
+          {currentRoute === 'transport-pools' && (
+            <TransportPoolsPage
+              activeProfile={effectiveProfile}
+              lang={lang}
+              onNavigate={handleNavigate}
+              navigationParams={navigationParams}
             />
           )}
 

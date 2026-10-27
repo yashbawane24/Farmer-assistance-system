@@ -169,7 +169,7 @@ export function Navbar({ currentRoute, onNavigate, lang, onLanguageChange, activ
                   style={{ width: '100%', textAlign: 'left', padding: '6px 8px', fontSize: '0.82rem', background: 'none', borderRadius: '4px', cursor: 'pointer' }}
                   onClick={() => { onSwitchProfile(2); setShowProfileMenu(false); }}
                 >
-                  🚜 <strong>Rajesh Sharma</strong> (Progressive - Karnal Wheat)
+                  🚜 <strong>Rajesh Deshmukh</strong> (Latur - Soybean)
                 </button>
                 <hr style={{ margin: '6px 0', border: 'none', borderTop: '1px solid var(--color-border-subtle)' }} />
                 <button

@@ -5,6 +5,7 @@ import {
   Sprout,
   ScanLine,
   ShoppingBag,
+  Truck,
   CloudRain,
   Mic,
   FileText,
@@ -33,6 +34,7 @@ export function SidebarNav({
     { id: 'crop-advisor', label: t.nav.cropAdvisor, icon: Sprout, accent: '#F39C12' },
     { id: 'disease-scan', label: t.nav.diseaseScan, icon: ScanLine, accent: '#E74C3C' },
     { id: 'smart-mandi', label: t.nav.smartMandi, icon: ShoppingBag, accent: '#9B59B6' },
+    { id: 'transport-pools', label: t.nav.transportPools, icon: Truck, accent: '#27AE60' },
     { id: 'weather-alerts', label: t.nav.weatherAlerts, icon: CloudRain, accent: '#16A085' },
     { id: 'ai-agronomist', label: t.nav.aiAgronomist, icon: Mic, accent: '#1ABC9C' },
     { id: 'schemes', label: t.nav.schemes, icon: FileText, accent: '#2980B9' },
@@ -134,7 +136,7 @@ export function SidebarNav({
             {!isCollapsed && (
               <div className="sidebar-rail-user-meta">
                 <span className="sidebar-rail-user-name">{activeProfile?.fullName || (lang === 'mr' ? 'शेतकरी' : lang === 'hi' ? 'किसान' : 'Farmer')}</span>
-                <span className="sidebar-rail-user-location">📍 {activeProfile?.district || 'India'}</span>
+                <span className="sidebar-rail-user-location">📍 {activeProfile?.district || 'Maharashtra'}</span>
               </div>
             )}
           </div>
