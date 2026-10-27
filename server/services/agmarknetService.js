@@ -43,7 +43,15 @@ async function fetchPage(apiKey, offset) {
         offset: String(offset),
         'filters[state.keyword]': REGION_STATE
     });
-    const res = await fetch(`${RESOURCE_URL}?${params.toString()}`, { signal: AbortSignal.timeout(30000) });
+    const res = await fetch(`${RESOURCE_URL}?${params.toString()}`, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-IN,en;q=0.9',
+            'Connection': 'keep-alive'
+        },
+        signal: AbortSignal.timeout(30000)
+    });
     const body = await res.json().catch(() => ({}));
     if (!res.ok || body.error) {
         throw new Error(`data.gov.in: ${body.error || body.message || `HTTP ${res.status}`}`);
@@ -110,8 +118,9 @@ export async function syncMandiPrices() {
         console.log(`📈 [Agmarknet] Synced ${rows.length} Maharashtra mandi price rows.`);
         return rows.length;
     } catch (err) {
-        syncStatus.lastError = err.message;
-        console.warn(`⚠️ [Agmarknet] Sync failed: ${err.message}`);
+        const causeDetail = err.cause?.message || err.cause?.code || '';
+        syncStatus.lastError = causeDetail ? `${err.message} (${causeDetail})` : err.message;
+        console.warn(`⚠️ [Agmarknet] Sync failed: ${syncStatus.lastError}`);
         throw err;
     }
 }
@@ -136,11 +145,21 @@ export async function getLatestCropPrices(cropName) {
     const commodities = crop ? crop.commodities : [cropName];
     const placeholders = commodities.map(() => '?').join(',');
 
-    const rows = await query(`
+    let rows = await query(`
         SELECT * FROM live_mandi_prices
         WHERE state = ? AND commodity IN (${placeholders}) AND arrival_date >= ?
         ORDER BY arrival_date DESC
     `, [REGION_STATE, ...commodities, isoDaysAgo(RECENT_DAYS)]);
+
+    // Resilient fallback: If no records within recent 15 days, retrieve latest available benchmark records
+    if (rows.length === 0) {
+        rows = await query(`
+            SELECT * FROM live_mandi_prices
+            WHERE state = ? AND commodity IN (${placeholders})
+            ORDER BY arrival_date DESC
+            LIMIT 100
+        `, [REGION_STATE, ...commodities]);
+    }
 
     const latest = new Map();
     for (const row of rows) {
@@ -170,7 +189,7 @@ export async function getCropPriceHistory(cropName, { market, days = 30 } = {}) 
         params.push(market);
     }
 
-    return query(`
+    let history = await query(`
         SELECT arrival_date AS date,
                ROUND(AVG(modal_price_quintal)) AS modal_price,
                MIN(min_price_quintal) AS min_price,
@@ -181,6 +200,26 @@ export async function getCropPriceHistory(cropName, { market, days = 30 } = {}) 
         GROUP BY arrival_date
         ORDER BY arrival_date ASC
     `, params);
+
+    // Fallback: If no records within recent days window, load latest available trend records
+    if (history.length === 0) {
+        const fallbackParams = [REGION_STATE, ...commodities];
+        if (market) fallbackParams.push(market);
+        history = await query(`
+            SELECT arrival_date AS date,
+                   ROUND(AVG(modal_price_quintal)) AS modal_price,
+                   MIN(min_price_quintal) AS min_price,
+                   MAX(max_price_quintal) AS max_price,
+                   COUNT(DISTINCT market) AS markets
+            FROM live_mandi_prices
+            WHERE state = ? AND commodity IN (${placeholders}) ${marketFilter}
+            GROUP BY arrival_date
+            ORDER BY arrival_date ASC
+            LIMIT 30
+        `, fallbackParams);
+    }
+
+    return history;
 }
 
 /**

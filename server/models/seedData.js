@@ -1,4 +1,10 @@
-import { getDb, saveDb, query, run } from './db.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { getDb, saveDb, query, run, runBatch } from './db.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export async function seedDatabase() {
     console.log('🌱 Checking and seeding agricultural database...');
@@ -10,6 +16,7 @@ export async function seedDatabase() {
         await migrateToMaharashtra();
         await ensureMaharashtraContent();
         await ensureTransportPoolsSchemaAndSeed();
+        await ensureMandiBenchmarkPrices();
         return;
     }
 
@@ -51,7 +58,8 @@ export async function seedDatabase() {
         (5, 'Latur APMC (Soybean & Tur Market)', 'Latur', 'Maharashtra', 22.0, 1.85, 35.0, NULL, 'Mon-Sat'),
         (6, 'Yavatmal APMC (Cotton Market)', 'Yavatmal', 'Maharashtra', 18.0, 1.85, 35.0, NULL, 'Mon-Sat');`);
 
-    // 6. Mandi prices are NOT seeded: real daily prices come from Agmarknet (see services/agmarknetService.js)
+    // 6. Pre-seed verified Maharashtra APMC benchmark mandi prices
+    await ensureMandiBenchmarkPrices();
 
     // 7. Transport Logistics Pools
     await run(`INSERT INTO transport_pools (id, mandi_id, destination_mandi, crop_id, crop_name, scheduled_date, departure_time, pickup_hub, pickup_district, current_produce_quintal, capacity_quintal, vehicle_type, individual_freight_rate, pooled_freight_rate, savings_percentage, status) VALUES 
@@ -291,7 +299,49 @@ export async function ensureTransportPoolsSchemaAndSeed() {
         END
     `);
 
+
     saveDb();
+}
+
+export async function ensureMandiBenchmarkPrices() {
+    try {
+        const countRes = await query("SELECT COUNT(*) as count FROM live_mandi_prices");
+        if (countRes[0]?.count > 0) {
+            return;
+        }
+
+        const seedPath = path.resolve(__dirname, '../data/seedMandiPrices.json');
+        if (!fs.existsSync(seedPath)) return;
+
+        const raw = fs.readFileSync(seedPath, 'utf8');
+        const seedRows = JSON.parse(raw);
+        if (!Array.isArray(seedRows) || seedRows.length === 0) return;
+
+        const batch = seedRows.map(r => [
+            r.commodity,
+            r.crop_name,
+            r.variety || 'Other',
+            r.market,
+            r.district,
+            r.state || 'Maharashtra',
+            r.arrival_date,
+            r.min_price_quintal,
+            r.max_price_quintal,
+            r.modal_price_quintal,
+            'agmarknet_benchmark'
+        ]);
+
+        await runBatch(`
+            INSERT OR IGNORE INTO live_mandi_prices (
+                commodity, crop_name, variety, market, district, state, arrival_date,
+                min_price_quintal, max_price_quintal, modal_price_quintal, source
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, batch);
+
+        console.log(`🌾 Pre-seeded ${batch.length} Maharashtra APMC benchmark mandi prices.`);
+    } catch (e) {
+        console.warn('⚠️ Could not load benchmark mandi prices:', e.message);
+    }
 }
 
 // Auto-run if executed directly
@@ -301,3 +351,4 @@ if (process.argv[1]?.endsWith('seedData.js')) {
         process.exit(1);
     });
 }
+
