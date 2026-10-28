@@ -137,13 +137,33 @@ export function parseStructuredAnswer(rawText = '') {
 
     const hasTreatment = Boolean(sections.organic || sections.chemical);
 
+    // Build complete conversational readout across all sections (root cause + actions + remedies + tip)
+    const audioParts = [];
+    if (sections.answer) {
+        audioParts.push(sections.answer);
+    }
+    if (sections.actions && sections.actions.length > 0) {
+        audioParts.push(sections.actions.join('. '));
+    }
+    if (sections.organic && sections.organic !== '-') {
+        audioParts.push(sections.organic);
+    }
+    if (sections.chemical && sections.chemical !== '-') {
+        audioParts.push(sections.chemical);
+    }
+    if (sections.tip) {
+        audioParts.push(sections.tip);
+    }
+
+    const fullAudioReadout = audioParts.length > 0 ? audioParts.join('. ') : text;
+
     return {
         transcript,
         rootCause: sections.answer || text,
         immediateAction: sections.actions.length ? sections.actions : null,
         treatmentPlan: hasTreatment ? { biological: sections.organic || '-', chemical: sections.chemical || '-' } : null,
         farmerTip: sections.tip || null,
-        audioReadoutText: sections.answer || text
+        audioReadoutText: fullAudioReadout
     };
 }
 

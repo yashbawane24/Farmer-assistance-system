@@ -82,60 +82,101 @@ export class VoiceAssistant {
     }
   }
 
-  // Queue for streaming sentence-by-sentence playback
+  // Queue for streaming and long text playback
   static queue = [];
   static isQueueSpeaking = false;
   static currentLanguage = 'en';
+  static activeUtterances = new Set();
+  static heartbeatTimer = null;
 
   /**
-   * Speak text aloud using browser SpeechSynthesis
+   * Splits long text into short, natural sentences for reliable browser speech synthesis.
+   * Prevents browser 15-second speech cutoffs and buffer overflow.
    */
-  static speak(text, lang = 'en', onComplete = null) {
-    if (!this.isSynthesisSupported()) return;
+  static splitIntoSentences(text) {
+    if (!text) return [];
+    const cleaned = String(text)
+      .replace(/===[A-Z]+===/g, ' ')
+      .replace(/[*#_`]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
 
-    this.stopSpeaking();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    
-    // Choose appropriate voice/language
-    if (lang === 'hi') {
-      utterance.lang = 'hi-IN';
-    } else if (lang === 'mr') {
-      utterance.lang = 'mr-IN';
-    } else {
-      utterance.lang = 'en-IN';
-    }
-
-    utterance.rate = 0.94; // Optimized rate for clear agricultural comprehension
-    utterance.pitch = 1.0;
-
-    if (onComplete) {
-      utterance.onend = onComplete;
-      utterance.onerror = onComplete;
-    }
-
-    window.speechSynthesis.speak(utterance);
+    // Match sentences ending in ., !, ?, or Devanagari danda ।
+    const matches = cleaned.match(/[^.!?।\n]+[.!?।\n]*/g);
+    if (!matches || matches.length === 0) return [cleaned];
+    return matches.map(s => s.trim()).filter(s => s.length > 0);
   }
 
   /**
-   * Enqueues sentences as they arrive from streaming and begins speaking immediately
+   * Speak text aloud using browser SpeechSynthesis.
+   * Splits long text into sequential sentences so the browser does not stop in the middle.
    */
-  static enqueueSentence(sentence, lang = 'en', onStartFirst = null) {
+  static speak(text, lang = 'en', onComplete = null) {
+    if (!this.isSynthesisSupported()) {
+      if (onComplete) onComplete();
+      return;
+    }
+
+    this.stopSpeaking();
+
+    const sentences = this.splitIntoSentences(text);
+    if (sentences.length === 0) {
+      if (onComplete) onComplete();
+      return;
+    }
+
+    this.currentLanguage = lang;
+    sentences.forEach((sentence, idx) => {
+      const isLast = idx === sentences.length - 1;
+      this.enqueueSentence(sentence, lang, null, isLast ? onComplete : null);
+    });
+  }
+
+  /**
+   * Enqueues sentences as they arrive and ensures continuous playback
+   */
+  static enqueueSentence(sentence, lang = 'en', onStartFirst = null, onSentenceEnd = null) {
     if (!this.isSynthesisSupported()) return;
-    const clean = String(sentence || '').trim();
+    const clean = String(sentence || '')
+      .replace(/===[A-Z]+===/g, ' ')
+      .replace(/[*#_`]/g, '')
+      .trim();
     if (!clean) return;
 
     this.currentLanguage = lang;
-    this.queue.push({ text: clean, onStartFirst });
+    this.queue.push({ text: clean, onStartFirst, onSentenceEnd });
+
+    this.startHeartbeat();
 
     if (!this.isQueueSpeaking) {
       this.playNextInQueue();
     }
   }
 
+  static startHeartbeat() {
+    if (this.heartbeatTimer || typeof window === 'undefined') return;
+    // Chromium has a bug where speech pauses after ~14 seconds unless briefly toggled
+    this.heartbeatTimer = setInterval(() => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        }
+      }
+    }, 8000);
+  }
+
+  static stopHeartbeat() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  }
+
   static playNextInQueue() {
     if (!this.isSynthesisSupported() || this.queue.length === 0) {
       this.isQueueSpeaking = false;
+      this.stopHeartbeat();
       return;
     }
 
@@ -147,6 +188,9 @@ export class VoiceAssistant {
     }
 
     const utterance = new SpeechSynthesisUtterance(item.text);
+    // Keep reference in Set so browser garbage collection does not abort speech mid-sentence
+    this.activeUtterances.add(utterance);
+
     const langMap = { en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN' };
     utterance.lang = langMap[this.currentLanguage] || 'en-IN';
     utterance.rate = 0.94;
@@ -156,26 +200,37 @@ export class VoiceAssistant {
     utterance.onstart = () => {
       if (!started && item.onStartFirst) {
         started = true;
-        item.onStartFirst();
+        try { item.onStartFirst(); } catch (e) {}
       }
     };
 
-    utterance.onend = () => {
+    const finish = () => {
+      this.activeUtterances.delete(utterance);
+      if (item.onSentenceEnd) {
+        try { item.onSentenceEnd(); } catch (e) {}
+      }
       this.playNextInQueue();
     };
 
-    utterance.onerror = () => {
-      this.playNextInQueue();
-    };
+    utterance.onend = finish;
+    utterance.onerror = finish;
 
-    window.speechSynthesis.speak(utterance);
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      finish();
+    }
   }
 
   static stopSpeaking() {
     this.queue = [];
     this.isQueueSpeaking = false;
+    this.stopHeartbeat();
+    this.activeUtterances.clear();
     if (this.isSynthesisSupported()) {
-      window.speechSynthesis.cancel();
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
     }
   }
 }

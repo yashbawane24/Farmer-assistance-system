@@ -720,25 +720,28 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
           });
 
           // Queue completed sentences to TTS as they stream in
-          if (!seenStructuredMarker) {
-            ttsSentenceBuffer += chunk;
-            // Discard any transcript prefix from TTS
-            if (ttsSentenceBuffer.startsWith('TRANSCRIPT:')) {
-              const nl = ttsSentenceBuffer.indexOf('\n');
-              if (nl !== -1) ttsSentenceBuffer = ttsSentenceBuffer.slice(nl + 1);
-              else return;
-            }
+          ttsSentenceBuffer += chunk;
+          // Discard any transcript prefix from TTS
+          if (ttsSentenceBuffer.startsWith('TRANSCRIPT:')) {
+            const nl = ttsSentenceBuffer.indexOf('\n');
+            if (nl !== -1) ttsSentenceBuffer = ttsSentenceBuffer.slice(nl + 1);
+            else return;
+          }
 
-            const { sentences, remainder } = extractSentences(ttsSentenceBuffer);
-            ttsSentenceBuffer = remainder;
+          // Smoothly convert section markers to natural spoken cues so speech never stops midway
+          const spokenBuffer = ttsSentenceBuffer
+            .replace(/===ACTIONS===/g, selectedLanguage === 'mr' ? '. खालील कृती करा: ' : selectedLanguage === 'hi' ? '. तत्काल यह कदम उठाएं: ' : '. Immediate action steps: ')
+            .replace(/===ORGANIC===/g, selectedLanguage === 'mr' ? '. सेंद्रिय उपाय: ' : selectedLanguage === 'hi' ? '. जैविक उपचार: ' : '. Organic remedy: ')
+            .replace(/===CHEMICAL===/g, selectedLanguage === 'mr' ? '. रासायनिक उपाय: ' : selectedLanguage === 'hi' ? '. रासायनिक उपचार: ' : '. Chemical treatment: ')
+            .replace(/===TIP===/g, selectedLanguage === 'mr' ? '. कृषीतज्ज्ञांचा सल्ला: ' : selectedLanguage === 'hi' ? '. कृषि विशेषज्ञ सलाह: ' : '. Pro tip: ');
 
-            for (const sentence of sentences) {
-              // Stop queuing TTS if we hit structured markers
-              if (sentence.includes('===')) {
-                seenStructuredMarker = true;
-                break;
-              }
-              VoiceAssistant.enqueueSentence(sentence, selectedLanguage, () => {
+          const { sentences, remainder } = extractSentences(spokenBuffer);
+          ttsSentenceBuffer = remainder;
+
+          for (const sentence of sentences) {
+            const clean = sentence.replace(/===[A-Z]+===/g, '').replace(/[*#_`]/g, '').trim();
+            if (clean) {
+              VoiceAssistant.enqueueSentence(clean, selectedLanguage, () => {
                 if (!perfRef.current.firstSentence) {
                   perfRef.current.firstSentence = Date.now();
                 }
@@ -751,9 +754,17 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
           perfRef.current.answerComplete = Date.now();
           perfRef.current.model = result?.model || '';
 
-          // If there's any remaining sentence fragment in the TTS buffer before markers, speak it
-          if (!seenStructuredMarker && ttsSentenceBuffer.trim()) {
-            const cleanTail = ttsSentenceBuffer.replace(/===.+===/g, '').trim();
+          // If there's any remaining sentence fragment in the TTS buffer, speak it
+          if (ttsSentenceBuffer && ttsSentenceBuffer.trim()) {
+            const cleanTail = ttsSentenceBuffer
+              .replace(/===ACTIONS===/g, selectedLanguage === 'mr' ? '. खालील कृती करा: ' : selectedLanguage === 'hi' ? '. तत्काल यह कदम उठाएं: ' : '. Immediate action steps: ')
+              .replace(/===ORGANIC===/g, selectedLanguage === 'mr' ? '. सेंद्रिय उपाय: ' : selectedLanguage === 'hi' ? '. जैविक उपचार: ' : '. Organic remedy: ')
+              .replace(/===CHEMICAL===/g, selectedLanguage === 'mr' ? '. रासायनिक उपाय: ' : selectedLanguage === 'hi' ? '. रासायनिक उपचार: ' : '. Chemical treatment: ')
+              .replace(/===TIP===/g, selectedLanguage === 'mr' ? '. कृषीतज्ज्ञांचा सल्ला: ' : selectedLanguage === 'hi' ? '. कृषि विशेषज्ञ सलाह: ' : '. Pro tip: ')
+              .replace(/===[A-Z]+===/g, '')
+              .replace(/[*#_`]/g, '')
+              .trim();
+
             if (cleanTail) {
               VoiceAssistant.enqueueSentence(cleanTail, selectedLanguage, () => {
                 if (!perfRef.current.firstSentence) {
