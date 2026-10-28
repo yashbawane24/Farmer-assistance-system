@@ -180,6 +180,8 @@ export const api = {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let hasReceivedDone = false;
+      let rawChunksAccumulator = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -196,20 +198,35 @@ export const api = {
             currentEvent = trimmed.slice(7).trim();
           } else if (trimmed.startsWith('data: ')) {
             const dataStr = trimmed.slice(6);
+            let data = null;
             try {
-              const data = JSON.parse(dataStr);
-              if (currentEvent === 'chunk' && onChunk) {
-                onChunk(data.text);
-              } else if (currentEvent === 'transcript' && onTranscript) {
-                onTranscript(data.text);
-              } else if (currentEvent === 'done' && onDone) {
-                onDone(data.result);
-              } else if (currentEvent === 'error') {
-                throw new Error(data.message || 'Stream error');
-              }
-            } catch (jsonErr) {}
+              data = JSON.parse(dataStr);
+            } catch (jsonErr) {
+              continue;
+            }
+
+            if (currentEvent === 'chunk' && onChunk) {
+              rawChunksAccumulator += (data.text || '');
+              onChunk(data.text);
+            } else if (currentEvent === 'transcript' && onTranscript) {
+              onTranscript(data.text);
+            } else if (currentEvent === 'done' && onDone) {
+              hasReceivedDone = true;
+              onDone(data.result);
+            } else if (currentEvent === 'error') {
+              throw new Error(data.message || 'Stream error');
+            }
           }
         }
+      }
+
+      // Fallback: If stream completed cleanly but 'done' event was omitted, finalize gracefully
+      if (!hasReceivedDone && onDone) {
+        onDone({
+          rootCause: rawChunksAccumulator,
+          fullText: rawChunksAccumulator,
+          audioReadoutText: rawChunksAccumulator
+        });
       }
     } catch (err) {
       if (err.name === 'AbortError') return;

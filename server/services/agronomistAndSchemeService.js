@@ -115,22 +115,29 @@ export function parseStructuredAnswer(rawText = '') {
         tip: ''
     };
 
-    const parts = text.split(/(===ACTIONS===|===ORGANIC===|===CHEMICAL===|===TIP===)/g);
-    sections.answer = (parts[0] || '').trim();
+    const cleanSectionContent = (str = '') => {
+        return str
+            .replace(/^#+\s*/gm, '')
+            .replace(/[-=_]{3,}/g, '')
+            .trim();
+    };
+
+    const parts = text.split(/(?:###\s*)?(===ACTIONS===|===ORGANIC===|===CHEMICAL===|===TIP===)/g);
+    sections.answer = cleanSectionContent(parts[0] || '').trim();
 
     for (let i = 1; i < parts.length; i += 2) {
         const marker = parts[i];
-        const content = (parts[i + 1] || '').trim();
-        if (marker === '===ACTIONS===') {
+        const content = cleanSectionContent(parts[i + 1] || '');
+        if (marker.includes('ACTIONS')) {
             sections.actions = content
                 .split('\n')
                 .map(l => l.replace(/^[-*•\d.]\s*/, '').trim())
-                .filter(Boolean);
-        } else if (marker === '===ORGANIC===') {
+                .filter(l => l.length > 2 && !l.startsWith('===') && !l.startsWith('---') && !l.startsWith('###'));
+        } else if (marker.includes('ORGANIC')) {
             sections.organic = content;
-        } else if (marker === '===CHEMICAL===') {
+        } else if (marker.includes('CHEMICAL')) {
             sections.chemical = content;
-        } else if (marker === '===TIP===') {
+        } else if (marker.includes('TIP')) {
             sections.tip = content;
         }
     }
@@ -159,6 +166,7 @@ export function parseStructuredAnswer(rawText = '') {
 
     return {
         transcript,
+        fullText: text,
         rootCause: sections.answer || text,
         immediateAction: sections.actions.length ? sections.actions : null,
         treatmentPlan: hasTreatment ? { biological: sections.organic || '-', chemical: sections.chemical || '-' } : null,
@@ -222,17 +230,19 @@ ${matchedDocs.length ? `KNOWLEDGE: [${matchedDocs[0].topic}] ${matchedDocs[0].co
 
 RULES:
 - Respond in ${LANGUAGE_NAMES[language] || 'English'} only.
-- Direct conversational answer first (2-4 clear sentences).
-- If relevant to disease, pest, or cultivation, provide structured sections using these exact headers:
+- Provide a thorough, complete, and practical agricultural consultation. Do not stop halfway, do not cut short, and do not leave thoughts unfinished.
+- First provide a clear, detailed explanation of the crop's condition, stage, the cause of the disease or vulnerability (e.g. recent rainfall, high humidity, soil-borne fungi), and what symptoms to inspect.
+- Then, provide complete actionable solution sections using these exact headers:
 ===ACTIONS===
-- Step 1
-- Step 2
+- Step 1: Immediate practical step in the field
+- Step 2: Cultural/drainage/pruning practice
+- Step 3: Monitoring advice
 ===ORGANIC===
-Biological/organic treatment with dosage
+Full biological/organic remedy with exact dosage (e.g. Trichoderma viride @ 5g/L or Neem oil 10,000 ppm @ 3ml/L)
 ===CHEMICAL===
-CIB&RC approved chemical with dose per litre/acre
+CIB&RC approved chemical fungicide or pesticide with exact commercial name, active ingredient, and precise dosage per litre/acre (e.g. Mancozeb 75% WP @ 2.5g/L or Ridomil Gold @ 2g/L)
 ===TIP===
-Practical cost-saving advice
+Practical cost-saving agronomic tip to protect future yield and prevent recurrence
 ${hasAudio ? '\nIMPORTANT: Since audio input is provided, the very first line of your response MUST BE:\nTRANSCRIPT: <the exact question spoken by the user in their language>\nfollowed immediately by your answer.' : ''}`;
 
         const contents = (Array.isArray(history) ? history : [])
@@ -299,8 +309,8 @@ ${hasAudio ? '\nIMPORTANT: Since audio input is provided, the very first line of
             systemInstruction,
             contents,
             temperature: 0.3,
-            maxOutputTokens: 600,
-            timeoutMs: 20000,
+            maxOutputTokens: 2500,
+            timeoutMs: 45000,
             onChunk,
             signal
         });
@@ -342,8 +352,8 @@ ${hasAudio ? '\nIMPORTANT: Since audio input is provided, the very first line of
             systemInstruction,
             contents,
             temperature: 0.3,
-            maxOutputTokens: 600,
-            timeoutMs: 20000
+            maxOutputTokens: 2500,
+            timeoutMs: 45000
         });
 
         const parsed = parseStructuredAnswer(rawText);

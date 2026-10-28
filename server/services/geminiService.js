@@ -83,8 +83,8 @@ export async function generate({
     contents,
     responseSchema,
     temperature = 0.3,
-    maxOutputTokens = 600,
-    timeoutMs = 20000
+    maxOutputTokens = 2500,
+    timeoutMs = 45000
 }) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -168,8 +168,8 @@ export async function streamGenerate({
     systemInstruction,
     contents,
     temperature = 0.3,
-    maxOutputTokens = 600,
-    timeoutMs = 20000,
+    maxOutputTokens = 2500,
+    timeoutMs = 45000,
     onChunk,
     signal
 }) {
@@ -255,7 +255,8 @@ export async function streamGenerate({
                     const jsonStr = trimmed.slice(6);
                     try {
                         const parsed = JSON.parse(jsonStr);
-                        const chunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                        const parts = parsed.candidates?.[0]?.content?.parts || [];
+                        const chunk = parts.map(p => p.text || '').join('');
                         if (chunk) {
                             if (!firstChunkTime) {
                                 firstChunkTime = Date.now() - startTime;

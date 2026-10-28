@@ -697,12 +697,12 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
             }
           }
 
-          // Strip structured section markers from direct answer display while streaming
-          const markerIdx = displayText.search(/===(ACTIONS|ORGANIC|CHEMICAL|TIP)===/);
-          if (markerIdx !== -1) {
-            seenStructuredMarker = true;
-            displayText = displayText.slice(0, markerIdx).trim();
-          }
+          // Cleanly format section markers so the full comprehensive answer streams live on screen
+          const formattedDisplay = displayText
+            .replace(/(?:###\s*)?===ACTIONS===\s*/g, selectedLanguage === 'mr' ? '\n\n📋 **तातडीने करावयाच्या कृती (Immediate Actions):**\n' : selectedLanguage === 'hi' ? '\n\n📋 **तत्काल करने योग्य कदम (Immediate Actions):**\n' : '\n\n📋 **Immediate Actions:**\n')
+            .replace(/(?:###\s*)?===ORGANIC===\s*/g, selectedLanguage === 'mr' ? '\n\n🌿 **सेंद्रिय/जैविक उपाय (Organic Treatment):**\n' : selectedLanguage === 'hi' ? '\n\n🌿 **जैविक उपचार (Organic Treatment):**\n' : '\n\n🌿 **Organic Treatment:**\n')
+            .replace(/(?:###\s*)?===CHEMICAL===\s*/g, selectedLanguage === 'mr' ? '\n\n🧪 **रासायनिक उपाय (Chemical Spray):**\n' : selectedLanguage === 'hi' ? '\n\n🧪 **रासायनिक उपचार (Chemical Spray):**\n' : '\n\n🧪 **Chemical Spray:**\n')
+            .replace(/(?:###\s*)?===TIP===\s*/g, selectedLanguage === 'mr' ? '\n\n💡 **महत्त्वाचा सल्ला (Expert Tip):**\n' : selectedLanguage === 'hi' ? '\n\n💡 **विशेषज्ञ सलाह (Expert Tip):**\n' : '\n\n💡 **Expert Tip:**\n');
 
           // Update assistant text live in conversation
           setConversation((prev) => {
@@ -711,7 +711,7 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
             if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
               next[lastIdx] = {
                 ...next[lastIdx],
-                text: displayText,
+                text: formattedDisplay,
                 isThinking: false,
                 isStreaming: true
               };
@@ -790,13 +790,22 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
 
             const lastIdx = next.length - 1;
             if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
+              const baseText = result.fullText || incomingAccumulator || result.rootCause || '';
+              const fullCleanText = baseText
+                .replace(/^TRANSCRIPT:\s*.+\n*/m, '')
+                .replace(/(?:###\s*)?===ACTIONS===\s*/g, selectedLanguage === 'mr' ? '\n\n📋 **तातडीने करावयाच्या कृती (Immediate Actions):**\n' : selectedLanguage === 'hi' ? '\n\n📋 **तत्काल करने योग्य कदम (Immediate Actions):**\n' : '\n\n📋 **Immediate Actions:**\n')
+                .replace(/(?:###\s*)?===ORGANIC===\s*/g, selectedLanguage === 'mr' ? '\n\n🌿 **सेंद्रिय/जैविक उपाय (Organic Treatment):**\n' : selectedLanguage === 'hi' ? '\n\n🌿 **जैविक उपचार (Organic Treatment):**\n' : '\n\n🌿 **Organic Treatment:**\n')
+                .replace(/(?:###\s*)?===CHEMICAL===\s*/g, selectedLanguage === 'mr' ? '\n\n🧪 **रासायनिक उपाय (Chemical Spray):**\n' : selectedLanguage === 'hi' ? '\n\n🧪 **रासायनिक उपचार (Chemical Spray):**\n' : '\n\n🧪 **Chemical Spray:**\n')
+                .replace(/(?:###\s*)?===TIP===\s*/g, selectedLanguage === 'mr' ? '\n\n💡 **महत्त्वाचा सल्ला (Expert Tip):**\n' : selectedLanguage === 'hi' ? '\n\n💡 **विशेषज्ञ सलाह (Expert Tip):**\n' : '\n\n💡 **Expert Tip:**\n')
+                .trim();
+
               next[lastIdx] = {
                 role: 'assistant',
-                text: result.rootCause || result.audioReadoutText || incomingAccumulator,
+                text: fullCleanText || result.rootCause || result.audioReadoutText || incomingAccumulator,
                 immediateAction: result.immediateAction,
                 treatmentPlan: result.treatmentPlan,
                 farmerTip: result.farmerTip,
-                audioReadoutText: result.audioReadoutText,
+                audioReadoutText: result.audioReadoutText || fullCleanText,
                 ragContext: result.retrievedContext,
                 knowledgeTopic: result.knowledgeTopic,
                 aiEngine: result.aiEngine,
@@ -885,6 +894,9 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
         }
         return [...next, { role: 'assistant', text: errorText, timestamp: 'Error' }];
       });
+      setIsStreaming(false);
+      setLoading(false);
+    } finally {
       setIsStreaming(false);
       setLoading(false);
     }
