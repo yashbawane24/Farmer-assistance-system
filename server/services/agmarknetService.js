@@ -139,6 +139,7 @@ export async function syncMandiPrices() {
                 min_price_quintal = excluded.min_price_quintal,
                 max_price_quintal = excluded.max_price_quintal,
                 modal_price_quintal = excluded.modal_price_quintal,
+                source = excluded.source,
                 fetched_at = CURRENT_TIMESTAMP
         `, rows);
 
