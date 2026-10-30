@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { getTranslation } from '../services/i18n.js';
 
-export function LandingPage({ onNavigate, lang, onLanguageChange, onOpenAuth }) {
+export function LandingPage({ onNavigate, lang, onLanguageChange, onOpenAuth, isAuthenticated = false, activeProfile = null }) {
   const t = getTranslation(lang);
 
   return (
@@ -90,7 +90,7 @@ export function LandingPage({ onNavigate, lang, onLanguageChange, onOpenAuth }) 
 
             <button
               type="button"
-              onClick={onOpenAuth}
+              onClick={isAuthenticated ? () => onNavigate('dashboard') : onOpenAuth}
               className="landing-auth-btn"
               style={{
                 backgroundColor: '#112019',
@@ -106,7 +106,11 @@ export function LandingPage({ onNavigate, lang, onLanguageChange, onOpenAuth }) 
                 gap: '6px'
               }}
             >
-              <span>{t.hero.signInRegister}</span>
+              <span>
+                {isAuthenticated
+                  ? (lang === 'mr' ? 'डॅशबोर्ड उघडा' : lang === 'hi' ? 'डैशबोर्ड खोलें' : 'Open Dashboard')
+                  : t.hero.signInRegister}
+              </span>
               <ArrowRight size={14} />
             </button>
           </div>
@@ -176,7 +180,7 @@ export function LandingPage({ onNavigate, lang, onLanguageChange, onOpenAuth }) 
               {/* Pill Button with Arrow Circle */}
               <button
                 type="button"
-                onClick={onOpenAuth}
+                onClick={isAuthenticated ? () => onNavigate('dashboard') : onOpenAuth}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -193,7 +197,11 @@ export function LandingPage({ onNavigate, lang, onLanguageChange, onOpenAuth }) 
                   transition: 'transform 0.2s ease'
                 }}
               >
-                <span>{t.hero.ctaPlan}</span>
+                <span>
+                  {isAuthenticated
+                    ? (lang === 'mr' ? 'माझ्या शेत डॅशबोर्डवर जा' : lang === 'hi' ? 'खेत डैशबोर्ड पर जाएं' : 'Go to Farm Dashboard')
+                    : t.hero.ctaPlan}
+                </span>
                 <div style={{
                   width: '36px',
                   height: '36px',

@@ -22,7 +22,11 @@ import { translateCropName } from './services/i18n.js';
 import './styles/sidebar.css';
 
 export function App() {
-  const [currentRoute, setCurrentRoute] = useState('home');
+  const [currentRoute, setCurrentRoute] = useState(() => {
+    return localStorage.getItem('sfas_authenticated') === 'true' && localStorage.getItem('sfas_active_profile')
+      ? 'dashboard'
+      : 'home';
+  });
   const [navigationParams, setNavigationParams] = useState(null);
   const [lang, setLang] = useState(() => localStorage.getItem('sfas_lang') || 'en');
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -221,6 +225,8 @@ export function App() {
               lang={lang}
               onLanguageChange={handleLanguageChange}
               onOpenAuth={() => setShowAuthModal(true)}
+              isAuthenticated={isAuthenticated}
+              activeProfile={effectiveProfile}
             />
           )}
 

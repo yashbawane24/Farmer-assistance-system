@@ -1,5 +1,15 @@
-// Centralized API Client with Offline Resilience
-const RAW_URL = import.meta.env.VITE_API_URL || '/api';
+// Centralized API Client with Auto-Targeting & Offline Resilience
+const DEPLOYED_BACKEND_URL = 'https://farmer-assistance-system-api.onrender.com/api';
+
+const RAW_URL = import.meta.env.VITE_API_URL || (
+  typeof window !== 'undefined' && (
+    window.location.hostname.includes('vercel.app') ||
+    window.location.hostname.includes('onrender.com') ||
+    (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1')
+  )
+    ? DEPLOYED_BACKEND_URL
+    : '/api'
+);
 const BASE_URL = RAW_URL.replace(/\/+$/, '');
 
 async function fetchJson(endpoint, options = {}) {
