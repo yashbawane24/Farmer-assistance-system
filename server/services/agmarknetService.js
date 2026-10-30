@@ -35,7 +35,37 @@ export function isoDaysAgo(days) {
     return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 }
 
+// data.gov.in refuses connections from some cloud servers (the Render server in the USA gets ECONNREFUSED).
+// In that case the request goes through our read-only relay on Vercel's Mumbai region (client/api/agmarknet.js).
+const RELAY_URL = process.env.AGMARKNET_RELAY_URL || 'https://farmer-assistance-system-blond.vercel.app/api/agmarknet';
+let useRelay = false;
+
+async function fetchPageViaRelay(apiKey, offset) {
+    const res = await fetch(`${RELAY_URL}?offset=${offset}&limit=${PAGE_SIZE}`, {
+        headers: { 'x-data-gov-key': apiKey, Accept: 'application/json' },
+        signal: AbortSignal.timeout(40000)
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || body.error) {
+        throw new Error(`Agmarknet relay: ${body.error || body.message || `HTTP ${res.status}`}`);
+    }
+    return { records: body.records || [], total: Number(body.total) || 0 };
+}
+
 async function fetchPage(apiKey, offset) {
+    if (useRelay) return fetchPageViaRelay(apiKey, offset);
+    try {
+        return await fetchPageDirect(apiKey, offset);
+    } catch (err) {
+        const blocked = /fetch failed|ECONNREFUSED|ECONNRESET|ETIMEDOUT|timeout|aborted/i.test(`${err.message} ${err.cause?.code || ''} ${err.cause?.message || ''}`);
+        if (!blocked) throw err;
+        console.warn(`[Agmarknet] Direct connection failed (${err.cause?.code || err.message}); using the Mumbai relay.`);
+        useRelay = true;
+        return fetchPageViaRelay(apiKey, offset);
+    }
+}
+
+async function fetchPageDirect(apiKey, offset) {
     const params = new URLSearchParams({
         'api-key': apiKey,
         format: 'json',
@@ -135,7 +165,12 @@ export function startMandiPriceScheduler() {
         console.warn('⚠️ [Agmarknet] DATA_GOV_API_KEY not set - live mandi prices disabled. Get a free key at https://data.gov.in');
         return;
     }
-    const runSync = () => syncMandiPrices().catch(() => undefined);
+    // A failed sync is retried after 10 minutes instead of waiting for the next 6-hour run
+    const RETRY_MS = 10 * 60 * 1000;
+    let retryTimer = null;
+    const runSync = () => syncMandiPrices().catch(() => {
+        if (!retryTimer) retryTimer = setTimeout(() => { retryTimer = null; runSync(); }, RETRY_MS);
+    });
     setTimeout(runSync, 3000);
     setInterval(runSync, SYNC_INTERVAL_MS);
 }

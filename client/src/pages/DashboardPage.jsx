@@ -13,7 +13,8 @@ import {
   translateCropName,
   translateCropStage,
   translateSoilType,
-  translateWaterReliability
+  translateWaterReliability,
+  translateVariety
 } from '../services/i18n.js';
 
 // Every label on this page, in all three languages
@@ -319,7 +320,10 @@ export function DashboardPage({ onNavigate, activeProfile, lang = 'en' }) {
                   {mandi.nearest.map((m) => (
                     <div key={m.mandiId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '8px 10px', border: '1px solid #EEE9DD', borderRadius: '10px' }}>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>{m.mandiName}</div>
+                        <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>
+                          {m.mandiName}
+                          {m.variety && m.variety !== 'Other' && <span style={{ ...muted, fontWeight: 600 }}> · {translateVariety(m.variety, lang)}</span>}
+                        </div>
                         <div style={muted}>{districtLabel(m.district, lang)} · ~{m.distanceKm} {L.km} · {L.reported} {formatDate(m.priceDate, lang)}</div>
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
