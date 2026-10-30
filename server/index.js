@@ -80,7 +80,8 @@ app.use((err, req, res, next) => {
         success: false,
         error: {
             code: err.code || 'INTERNAL_SERVER_ERROR',
-            message: err.message || 'An unexpected agricultural processing error occurred.'
+            message: err.message || 'An unexpected agricultural processing error occurred.',
+            ...(err.details ? { details: err.details } : {})
         }
     });
 });

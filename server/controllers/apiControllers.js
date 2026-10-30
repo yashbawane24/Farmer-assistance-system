@@ -311,6 +311,15 @@ export const WeatherAlertController = {
         }
     },
 
+    // Browser-supplied Open-Meteo data when the server's own request is blocked
+    shareLiveData(req, res) {
+        const { district, data } = req.body || {};
+        const ok = WeatherService.acceptBrowserData(String(district || ''), data);
+        res.status(ok ? 200 : 400).json(ok
+            ? { success: true, data: { cached: true } }
+            : { success: false, error: { code: 'INVALID_WEATHER_DATA', message: 'Not a valid Open-Meteo response for this district.' } });
+    },
+
     async getTodayStatus(req, res, next) {
         try {
             const { district = 'Nashik', crop = 'Tomato', stage = 'Flowering to Fruit Set' } = req.query;

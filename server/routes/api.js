@@ -68,6 +68,7 @@ router.delete('/pools/:id/members/:userId', requireAuth, PoolsController.leave);
 // Weather & Preventative Alerts
 router.get('/weather/forecast', WeatherAlertController.getForecast);
 router.get('/weather/today', WeatherAlertController.getTodayStatus);
+router.post('/weather/live', express.json({ limit: '300kb' }), WeatherAlertController.shareLiveData);
 router.get('/alerts/active', WeatherAlertController.getAlerts);
 
 // AI Voice Agronomist (RAG)

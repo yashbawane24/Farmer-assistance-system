@@ -59,10 +59,22 @@ function districtName(district, lang) {
     return d[lang];
 }
 
+// Same Open-Meteo request the server makes; also used by the browser when the server's own request is blocked
+export function openMeteoUrl(district) {
+    const d = findDistrict(district) || findDistrict('Nashik');
+    return `https://api.open-meteo.com/v1/forecast?latitude=${d.lat}&longitude=${d.lon}` +
+        '&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m' +
+        '&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,weather_code' +
+        '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,relative_humidity_2m_mean,wind_speed_10m_max' +
+        '&timezone=Asia%2FKolkata';
+}
+
 function weatherUnavailable(district) {
     const err = new Error(`Live weather for ${district} is unavailable right now. Please try again in a few minutes.`);
     err.status = 503;
     err.code = 'WEATHER_UNAVAILABLE';
+    // Lets the browser fetch Open-Meteo itself and share the result (see WeatherService.acceptBrowserData)
+    err.details = { district: findDistrict(district)?.name || district, openMeteoUrl: openMeteoUrl(district) };
     return err;
 }
 
@@ -75,12 +87,7 @@ export class WeatherService {
             return cached.data;
         }
 
-        const dConfig = findDistrict(district) || findDistrict('Nashik');
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${dConfig.lat}&longitude=${dConfig.lon}` +
-            '&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m' +
-            '&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,weather_code' +
-            '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,relative_humidity_2m_mean,wind_speed_10m_max' +
-            '&timezone=Asia%2FKolkata';
+        const url = openMeteoUrl(district);
 
         for (let attempt = 1; attempt <= 2; attempt++) {
             try {
@@ -98,6 +105,24 @@ export class WeatherService {
 
         // Serve slightly older data rather than nothing, but never invent weather
         return cached ? cached.data : null;
+    }
+
+    /**
+     * Cloud servers share IP addresses that free weather APIs often block. When that happens the browser
+     * downloads the same Open-Meteo forecast and sends it here. It is checked to be a real Open-Meteo
+     * response for this district's coordinates and cached like a server-side fetch.
+     */
+    static acceptBrowserData(district, data) {
+        const d = findDistrict(district);
+        const valid = d && data && typeof data === 'object'
+            && Math.abs(Number(data.latitude) - d.lat) < 0.2 && Math.abs(Number(data.longitude) - d.lon) < 0.2
+            && typeof data.current?.temperature_2m === 'number'
+            && Array.isArray(data.daily?.time) && data.daily.time.length > 0
+            && Array.isArray(data.hourly?.temperature_2m);
+        if (!valid) return false;
+        weatherCache.set(district.toLowerCase().trim(), { data, timestamp: Date.now() });
+        weatherCache.set(d.name.toLowerCase(), { data, timestamp: Date.now() });
+        return true;
     }
 
     static async getWeatherForecast(district = 'Nashik', lang = 'en') {

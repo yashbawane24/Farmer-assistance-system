@@ -64,6 +64,7 @@ async function fetchJson(endpoint, options = {}) {
       const err = new Error(data.error?.message || `HTTP Error ${response.status}`);
       err.status = response.status; // server answered: not an offline/network problem
       err.code = data.error?.code;
+      err.details = data.error?.details;
       throw err;
     }
 
@@ -89,6 +90,31 @@ async function fetchJson(endpoint, options = {}) {
     }
 
     throw error;
+  }
+}
+
+
+// Cloud servers are often blocked by free weather APIs. If the server cannot reach Open-Meteo,
+// the browser downloads the same forecast, shares it with the server (which checks and caches it),
+// and the request is retried once. Weather is always real; nothing is invented.
+const sharedWeather = new Map();
+async function withBrowserWeather(request) {
+  try {
+    return await request();
+  } catch (err) {
+    const url = err?.details?.openMeteoUrl;
+    const district = err?.details?.district;
+    if (err?.code !== 'WEATHER_UNAVAILABLE' || !url || !district) throw err;
+    if (!sharedWeather.has(district)) {
+      sharedWeather.set(district, (async () => {
+        const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+        if (!res.ok) throw err;
+        const data = await res.json();
+        await fetchJson('/weather/live', { method: 'POST', body: JSON.stringify({ district, data }) });
+      })().finally(() => setTimeout(() => sharedWeather.delete(district), 5 * 60 * 1000)));
+    }
+    await sharedWeather.get(district);
+    return request();
   }
 }
 
@@ -167,11 +193,12 @@ export const api = {
   }),
 
   // Weather & Alerts
-  getWeatherForecast: (district = 'Nashik') => fetchJson(`/weather/forecast?district=${encodeURIComponent(district)}`),
+  getWeatherForecast: (district = 'Nashik') =>
+    withBrowserWeather(() => fetchJson(`/weather/forecast?district=${encodeURIComponent(district)}`)),
   getTodayWeatherStatus: (district = 'Nashik', crop = 'Tomato', stage = 'Flowering to Fruit Set') =>
-    fetchJson(`/weather/today?district=${encodeURIComponent(district)}&crop=${encodeURIComponent(crop)}&stage=${encodeURIComponent(stage)}`),
+    withBrowserWeather(() => fetchJson(`/weather/today?district=${encodeURIComponent(district)}&crop=${encodeURIComponent(crop)}&stage=${encodeURIComponent(stage)}`)),
   getActiveAlerts: (district = 'Nashik', crop = 'Tomato', stage = 'Flowering to Fruit Set') =>
-    fetchJson(`/alerts/active?district=${encodeURIComponent(district)}&crop=${encodeURIComponent(crop)}&stage=${encodeURIComponent(stage)}`),
+    withBrowserWeather(() => fetchJson(`/alerts/active?district=${encodeURIComponent(district)}&crop=${encodeURIComponent(crop)}&stage=${encodeURIComponent(stage)}`)),
 
   // AI Voice Agronomist
   warmupAgronomist: (params = {}) => {
