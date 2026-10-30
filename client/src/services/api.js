@@ -110,6 +110,25 @@ export const api = {
   getMandiPriceTrend: (crop = 'Tomato') =>
     fetchJson(`/mandi/trend?crop=${encodeURIComponent(crop)}`),
   getMandiStatus: () => fetchJson('/mandi/status'),
+  syncMandiPrices: () => fetchJson('/mandi/sync', { method: 'POST' }),
+  ingestMandiRecords: (records) => fetchJson('/mandi/ingest', {
+    method: 'POST',
+    body: JSON.stringify({ records })
+  }),
+  syncMandiFromClient: async () => {
+    try {
+      const apiKey = '579b464db66ec23bdd00000121b85cefe0fa42345ec072c7c94a3375';
+      const url = `https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=${apiKey}&format=json&limit=1000&filters[state.keyword]=Maharashtra`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(12000) });
+      if (!res.ok) return null;
+      const json = await res.json();
+      if (!Array.isArray(json.records) || json.records.length === 0) return null;
+      return await api.ingestMandiRecords(json.records);
+    } catch (e) {
+      console.warn('Client Agmarknet relay skipped:', e.message);
+      return null;
+    }
+  },
   getTransportPools: () => fetchJson('/mandi/pools'),
   joinTransportPool: (payload) => fetchJson('/mandi/join-pool', {
     method: 'POST',

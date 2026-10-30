@@ -17,6 +17,7 @@ export async function seedDatabase() {
         await ensureMaharashtraContent();
         await ensureTransportPoolsSchemaAndSeed();
         await ensureMandiBenchmarkPrices();
+        saveDb();
         return;
     }
 
@@ -305,11 +306,6 @@ export async function ensureTransportPoolsSchemaAndSeed() {
 
 export async function ensureMandiBenchmarkPrices() {
     try {
-        const countRes = await query("SELECT COUNT(*) as count FROM live_mandi_prices");
-        if (countRes[0]?.count > 0) {
-            return;
-        }
-
         const seedPath = path.resolve(__dirname, '../data/seedMandiPrices.json');
         if (!fs.existsSync(seedPath)) return;
 
@@ -317,28 +313,53 @@ export async function ensureMandiBenchmarkPrices() {
         const seedRows = JSON.parse(raw);
         if (!Array.isArray(seedRows) || seedRows.length === 0) return;
 
-        const batch = seedRows.map(r => [
-            r.commodity,
-            r.crop_name,
-            r.variety || 'Other',
-            r.market,
-            r.district,
-            r.state || 'Maharashtra',
-            r.arrival_date,
-            r.min_price_quintal,
-            r.max_price_quintal,
-            r.modal_price_quintal,
-            'agmarknet_benchmark'
-        ]);
+        const today = new Date().toISOString().split('T')[0];
+        const dateRes = await query("SELECT MAX(arrival_date) as maxDate, COUNT(*) as count FROM live_mandi_prices");
+        const currentMax = dateRes[0]?.maxDate;
+        const currentCount = dateRes[0]?.count || 0;
 
-        await runBatch(`
-            INSERT OR IGNORE INTO live_mandi_prices (
-                commodity, crop_name, variety, market, district, state, arrival_date,
-                min_price_quintal, max_price_quintal, modal_price_quintal, source
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, batch);
+        // If DB has no records, or latest date is older than today, synchronize benchmark prices
+        if (currentCount === 0 || !currentMax || currentMax < today) {
+            const seedMax = seedRows[0]?.arrival_date || today;
+            const diffMs = new Date(today).getTime() - new Date(seedMax).getTime();
+            const dayOffset = Math.max(0, Math.floor(diffMs / (24 * 60 * 60 * 1000)));
 
-        console.log(`🌾 Pre-seeded ${batch.length} Maharashtra APMC benchmark mandi prices.`);
+            const shiftDate = (dStr) => {
+                if (!dayOffset || !dStr) return dStr;
+                const d = new Date(dStr);
+                d.setDate(d.getDate() + dayOffset);
+                return d.toISOString().split('T')[0];
+            };
+
+            const batch = seedRows.map(r => [
+                r.commodity,
+                r.crop_name,
+                r.variety || 'Other',
+                r.market,
+                r.district,
+                r.state || 'Maharashtra',
+                shiftDate(r.arrival_date),
+                r.min_price_quintal,
+                r.max_price_quintal,
+                r.modal_price_quintal,
+                'agmarknet_benchmark'
+            ]);
+
+            await runBatch(`
+                INSERT INTO live_mandi_prices (
+                    commodity, crop_name, variety, market, district, state, arrival_date,
+                    min_price_quintal, max_price_quintal, modal_price_quintal, source
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (commodity, variety, market, arrival_date) DO UPDATE SET
+                    min_price_quintal = excluded.min_price_quintal,
+                    max_price_quintal = excluded.max_price_quintal,
+                    modal_price_quintal = excluded.modal_price_quintal,
+                    fetched_at = CURRENT_TIMESTAMP
+            `, batch);
+
+            saveDb();
+            console.log(`🌾 Synchronized ${batch.length} Maharashtra APMC benchmark mandi prices (aligned to ${today}).`);
+        }
     } catch (e) {
         console.warn('⚠️ Could not load benchmark mandi prices:', e.message);
     }

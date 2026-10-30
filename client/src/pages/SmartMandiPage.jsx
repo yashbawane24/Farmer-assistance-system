@@ -16,6 +16,8 @@ export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
   const [comparisonData, setComparisonData] = useState(null);
   const [priceTrend, setPriceTrend] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const hasAutoSyncedRef = React.useRef(false);
 
   useEffect(() => {
     if (activeProfile?.currentCrop) setSelectedCrop(activeProfile.currentCrop);
@@ -35,10 +37,42 @@ export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
       ]);
       setComparisonData(compRes);
       setPriceTrend(trendRes);
+
+      // If backend reports an older date and we haven't synced yet, trigger seamless client relay
+      const today = new Date().toISOString().split('T')[0];
+      if (!hasAutoSyncedRef.current && compRes?.latestArrivalDate && compRes.latestArrivalDate < today) {
+        hasAutoSyncedRef.current = true;
+        api.syncMandiFromClient().then((synced) => {
+          if (synced && synced.data?.rowsSaved > 0) {
+            Promise.all([
+              api.compareMandis(selectedCrop, produceQuantity, district),
+              api.getMandiPriceTrend(selectedCrop)
+            ]).then(([updatedComp, updatedTrend]) => {
+              setComparisonData(updatedComp);
+              setPriceTrend(updatedTrend);
+            });
+          }
+        });
+      }
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLiveSync = async () => {
+    setSyncing(true);
+    try {
+      let syncRes = await api.syncMandiPrices().catch(() => null);
+      if (!syncRes || !syncRes.data?.rowsSaved) {
+        syncRes = await api.syncMandiFromClient();
+      }
+      await loadMandiData();
+    } catch (err) {
+      console.warn('Sync failed:', err);
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -179,8 +213,30 @@ export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
             📡 {lang === 'mr' ? 'स्रोत: Agmarknet, भारत सरकार' : lang === 'hi' ? 'स्रोत: Agmarknet, भारत सरकार' : 'Source: Agmarknet, Government of India'}
           </span>
           {comparisonData.latestArrivalDate && (
-            <span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
               🗓️ {lang === 'mr' ? 'नवीनतम आवक दिनांक' : lang === 'hi' ? 'नवीनतम आवक तिथि' : 'Latest arrival date'}: <strong>{comparisonData.latestArrivalDate}</strong>
+              <button
+                type="button"
+                onClick={handleLiveSync}
+                disabled={syncing}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--color-border-subtle)',
+                  borderRadius: '999px',
+                  padding: '2px 8px',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  color: 'var(--color-primary-forest)',
+                  cursor: syncing ? 'wait' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+                title="Sync live daily mandi prices from Agmarknet"
+              >
+                <span>🔄</span>
+                <span>{syncing ? (lang === 'mr' ? 'सिंक सुरू...' : lang === 'hi' ? 'सिंक हो रहा है...' : 'Syncing...') : (lang === 'mr' ? 'ताजे दर सिंक करा' : lang === 'hi' ? 'ताज़ा भाव सिंक करें' : 'Sync Live')}</span>
+              </button>
             </span>
           )}
           <span>

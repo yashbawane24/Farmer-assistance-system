@@ -4,7 +4,7 @@ import { DiseaseDetectionService } from '../services/diseaseDetectionService.js'
 import { SmartMandiService, LogisticsService } from '../services/mandiAndLogisticsService.js';
 import { WeatherService, AlertRuleEngine } from '../services/weatherAndAlertService.js';
 import { AgronomistRagService, GovernmentSchemeService } from '../services/agronomistAndSchemeService.js';
-import { syncMandiPrices } from '../services/agmarknetService.js';
+import { syncMandiPrices, ingestAgmarknetRecords } from '../services/agmarknetService.js';
 import { REGION_STATE, MAHARASHTRA_DISTRICTS, REGION_CROPS, MSP_YEAR_LABEL } from '../config/maharashtra.js';
 import { generate, transcribeAudio, isGeminiConfigured, splitDataUrl, LANGUAGE_NAMES } from '../services/geminiService.js';
 
@@ -181,6 +181,16 @@ export const MandiController = {
             res.json({ success: true, data: { rowsSaved: rows, status: SmartMandiService.getStatus() } });
         } catch (err) {
             err.status = err.status || 502;
+            next(err);
+        }
+    },
+
+    async ingest(req, res, next) {
+        try {
+            const records = req.body?.records || [];
+            const rowsSaved = await ingestAgmarknetRecords(records);
+            res.json({ success: true, data: { rowsSaved, status: SmartMandiService.getStatus() } });
+        } catch (err) {
             next(err);
         }
     },

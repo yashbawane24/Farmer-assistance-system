@@ -50,6 +50,7 @@ router.get('/mandi/compare', MandiController.compare);
 router.get('/mandi/trend', MandiController.getPriceTrend);
 router.get('/mandi/status', MandiController.getStatus);
 router.post('/mandi/sync', MandiController.sync);
+router.post('/mandi/ingest', MandiController.ingest);
 router.get('/mandi/pools', MandiController.getPools);
 router.post('/mandi/join-pool', MandiController.joinPool);
 
