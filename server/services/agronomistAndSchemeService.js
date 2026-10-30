@@ -22,7 +22,7 @@ export function setCached(key, data) {
     summaryCache.set(key, { data, timestamp: Date.now() });
 }
 
-// Strict Gemini Response Schema for Krishi Mitra
+// Strict Gemini Response Schema for Krishi Mitra with Medium-Length Descriptive Advice
 export const AGRONOMIST_RESPONSE_SCHEMA = {
     type: 'object',
     properties: {
@@ -41,7 +41,11 @@ export const AGRONOMIST_RESPONSE_SCHEMA = {
         },
         headline: {
             type: 'string',
-            description: 'Direct answer, maximum 15 words'
+            description: 'Direct answer summary, maximum 15 words'
+        },
+        descriptiveAdvice: {
+            type: 'string',
+            description: 'Medium-length cohesive descriptive agricultural advice (2-3 well-written paragraphs, around 120-220 words) thoroughly explaining what is happening, why it happened, practical field measures, and remedies in natural conversational prose.'
         },
         likelyCause: {
             type: 'string',
@@ -50,11 +54,6 @@ export const AGRONOMIST_RESPONSE_SCHEMA = {
         confidence: {
             type: 'string',
             enum: ['high', 'medium', 'low']
-        },
-        steps: {
-            type: 'array',
-            items: { type: 'string' },
-            description: '2-4 short action steps, each max 20 words, starting with an active verb'
         },
         treatment: {
             type: 'object',
@@ -114,15 +113,15 @@ export const AGRONOMIST_RESPONSE_SCHEMA = {
         },
         speakText: {
             type: 'string',
-            description: '2-3 plain spoken sentences in the farmer\'s language (headline + key step). No symbols.'
+            description: 'The COMPLETE descriptive answer in the farmer\'s language for full read-aloud playback. Plain spoken sentences without any symbols or bullet characters.'
         }
     },
     required: [
         'intent',
         'headline',
+        'descriptiveAdvice',
         'likelyCause',
         'confidence',
-        'steps',
         'treatment',
         'priceInfo',
         'weatherNote',
@@ -212,10 +211,6 @@ export function cleanAgronomistJson(raw) {
     const isTreatmentAllowed = intent === 'disease_pest' || intent === 'nutrition_fertilizer';
     const isPriceAllowed = intent === 'market_price';
 
-    const cleanSteps = Array.isArray(raw.steps)
-        ? raw.steps.map(s => stripMarkdown(String(s || ''))).filter(Boolean).slice(0, 4)
-        : [];
-
     let treatment = null;
     if (isTreatmentAllowed && raw.treatment && typeof raw.treatment === 'object') {
         const org = raw.treatment.organic;
@@ -249,10 +244,11 @@ export function cleanAgronomistJson(raw) {
     }
 
     const headline = stripMarkdown(String(raw.headline || ''));
+    const descriptiveAdvice = stripMarkdown(String(raw.descriptiveAdvice || raw.advice || raw.fullText || raw.text || headline || ''));
     const likelyCause = raw.likelyCause && raw.likelyCause !== 'null' ? stripMarkdown(String(raw.likelyCause)) : '';
     const weatherNote = raw.weatherNote && raw.weatherNote !== 'null' ? stripMarkdown(String(raw.weatherNote)) : '';
     const askBack = raw.askBack && raw.askBack !== 'null' ? stripMarkdown(String(raw.askBack)) : '';
-    const speakText = stripMarkdown(String(raw.speakText || headline || ''));
+    const speakText = stripMarkdown(String(raw.speakText || descriptiveAdvice || headline || ''));
 
     const followUps = Array.isArray(raw.followUps)
         ? raw.followUps.map(f => stripMarkdown(String(f || ''))).filter(Boolean).slice(0, 3)
@@ -261,9 +257,9 @@ export function cleanAgronomistJson(raw) {
     return {
         intent,
         headline,
+        descriptiveAdvice,
         likelyCause,
         confidence: ['high', 'medium', 'low'].includes(raw.confidence) ? raw.confidence : 'medium',
-        steps: cleanSteps,
         treatment,
         priceInfo,
         weatherNote,
@@ -315,7 +311,7 @@ export class AgronomistRagService {
         const mspLines = REGION_CROPS.filter(c => c.msp).map(c => `${c.name} ₹${c.msp}`).join(', ');
         const langName = LANGUAGE_NAMES[language] || 'English';
 
-        const systemInstruction = `You are Krishi Mitra, a practical agronomist for small farmers in ${REGION_STATE}. Be brief, specific and actionable. A farmer reads this on a phone in the field.
+        const systemInstruction = `You are Krishi Mitra, an expert agronomist advising smallholder farmers in ${REGION_STATE}.
 
 FARM CONTEXT:
 - Farmer: ${context.farmerName}, ${context.district} district, ${REGION_STATE}
@@ -328,17 +324,18 @@ MSP: ${mspLines}
 ${matchedDocs.length ? `KNOWLEDGE: [${matchedDocs[0].topic}] ${matchedDocs[0].content}` : ''}
 
 RULES:
-1. Intent first: classify into disease_pest | nutrition_fertilizer | irrigation_weather | market_price | scheme_subsidy | crop_planning | general | unclear.
-2. If the user question is vague, unclear or lacks symptoms (e.g. "My crop is not good"), classify intent as "unclear", set confidence "low", set askBack to ONE short clarifying question, keep steps general and safe, and set treatment to null.
-3. Treatment section: ONLY provide for disease_pest or nutrition_fertilizer. For ALL other intents, treatment MUST BE null.
-4. Diagnosis from text only: say "likely" in likelyCause and set appAction to "disease_scan" (so the farmer can confirm with a photo). If symptoms are not described clearly, set askBack and keep steps general/safe.
-5. Chemicals: only CIB&RC-approved products sold in Maharashtra, with dose per 15-litre pump AND per acre, pre-harvest interval and one safety line. Prefer the organic option first.
-6. Prices: market_price must use ONLY the MANDI PRICES context, with APMC name and date. If missing or asked for another crop/district not in context, state that it is unavailable and set appAction to "smart_mandi". Never invent prices.
-7. Weather: irrigation_weather questions must use the LIVE WEATHER context.
-8. Serious cases (rapid spread, more than 30% of plants affected, animal health) -> recommend the KVK / Kisan Call Centre 1800-180-1551.
-9. Reply in ${langName} only. Use simple words; Marathi/Hindi in native script; keep chemical/product names in English.
-10. Non-farming question -> politely say you only help with farming.
-11. Keep the total visible answer under about 120 words. No markdown formatting symbols (no **, no ###, no ---). Headline max 15 words. Each step max 20 words, starting with an active verb.`;
+1. Intent first: classify into disease_pest | nutrition_fertilizer | irrigation_weather | market_price | scheme_subsidy | crop_planning | general | unclear. Questions asking whether to spray tomorrow, weather suitability for spraying, rain, or irrigation MUST be classified as irrigation_weather.
+2. Provide a medium-length, cohesive, descriptive agricultural consultation in natural conversational paragraphs (around 120-220 words). Do NOT format the answer as simple pointwise bullet lists; explain clearly what is happening, why it happened, and descriptive guidance on what the farmer should do in their field.
+3. If the user question is vague or lacks symptoms (e.g. "My crop is not good"), classify as "unclear", set confidence "low", set askBack to ONE clear clarifying question, explain descriptively what details are needed, and set treatment to null.
+4. Treatment section: ONLY provide for disease_pest or nutrition_fertilizer. For all other intents (including irrigation_weather, market_price, scheme_subsidy, unclear), treatment MUST BE null.
+5. Diagnosis from text only: state "likely" in likelyCause and set appAction to "disease_scan" (so the farmer can verify with a leaf photo).
+6. Chemicals: only CIB&RC-approved products sold in Maharashtra, with dose per 15-litre pump AND per acre, pre-harvest interval and one safety line. Prefer the organic option first.
+7. Prices: market_price must use ONLY the MANDI PRICES context with APMC name and date. If missing, say unavailable and set appAction to "smart_mandi". Never invent prices.
+8. Weather: irrigation_weather questions must evaluate spraying conditions using the LIVE WEATHER context (forecast rain, humidity, wind) and give descriptive spraying guidance. Treatment MUST be null.
+9. Serious cases (>30% damage, rapid spread, animal health) -> recommend KVK / Kisan Call Centre 1800-180-1551.
+10. Reply in ${langName} only. Use simple words; Marathi/Hindi in native script; keep chemical/product names in English.
+11. Absolutely NO markdown symbols (no **, no ###, no ---).
+12. Ensure speakText contains the COMPLETE descriptive consultation so the farmer can listen to the entire advice read aloud.`;
 
         const contents = (Array.isArray(history) ? history : [])
             .slice(-MAX_HISTORY_TURNS)
@@ -357,7 +354,7 @@ RULES:
     }
 
     /**
-     * Fast non-streaming structured consultation returning clean JSON.
+     * Fast non-streaming structured consultation returning medium-length descriptive JSON.
      */
     static async consult({ question, farmerId = 1, language = 'en', history = [] }) {
         const startTotal = Date.now();
@@ -374,8 +371,8 @@ RULES:
             contents,
             responseSchema: AGRONOMIST_RESPONSE_SCHEMA,
             temperature: 0.3,
-            maxOutputTokens: 500,
-            timeoutMs: 20000
+            maxOutputTokens: 1000,
+            timeoutMs: 25000
         });
 
         const geminiDuration = Date.now() - startGemini;
@@ -384,9 +381,9 @@ RULES:
         const structured = cleanAgronomistJson(rawJson) || {
             intent: 'general',
             headline: 'Agricultural Consultation',
+            descriptiveAdvice: 'Please consult your local agricultural extension officer or Krishi Vigyan Kendra for specific assistance.',
             likelyCause: '',
             confidence: 'medium',
-            steps: ['Consult your local agricultural extension officer (KVK).'],
             treatment: null,
             priceInfo: null,
             weatherNote: '',
@@ -446,13 +443,9 @@ RULES:
         onChunk,
         signal
     }) {
-        // Fallback for any legacy callers: execute consult and stream speakText
         const answer = await this.consult({ question, farmerId, language, history });
-        if (onChunk && answer.headline) {
-            onChunk(answer.headline);
-            if (answer.steps && answer.steps.length) {
-                onChunk('\n' + answer.steps.join('\n'));
-            }
+        if (onChunk && (answer.descriptiveAdvice || answer.headline)) {
+            onChunk(answer.descriptiveAdvice || answer.headline);
         }
         return answer;
     }

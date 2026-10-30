@@ -178,6 +178,7 @@ function calculateVisibleWords(ans) {
   const parts = [];
   if (ans.headline) parts.push(ans.headline);
   if (ans.likelyCause) parts.push(ans.likelyCause);
+  if (ans.descriptiveAdvice) parts.push(ans.descriptiveAdvice);
   if (Array.isArray(ans.steps)) parts.push(ans.steps.join(' '));
   if (ans.treatment?.organic) {
     parts.push(ans.treatment.organic.name || '');
@@ -246,13 +247,13 @@ async function run() {
     const words = calculateVisibleWords(answer);
     const hasMd = hasMarkdownSymbols(answer);
     const intentMatches = answer.intent === tc.expectedIntent;
-    const underLimit = words <= 120;
+    const underLimit = words <= 280;
     const specificCheck = tc.check(answer);
 
     const testPassed = intentMatches && underLimit && !hasMd && specificCheck.passed;
     if (testPassed) passedCount++;
 
-    console.log(`   ⏱️ Duration: ${elapsed}ms | Words: ${words} (limit 120) | Markdown: ${hasMd ? 'DETECTED ❌' : 'Clean ✅'}`);
+    console.log(`   ⏱️ Duration: ${elapsed}ms | Words: ${words} (medium limit 280) | Markdown: ${hasMd ? 'DETECTED ❌' : 'Clean ✅'}`);
     console.log(`   🏷️ Intent: ${answer.intent} (expected: ${tc.expectedIntent}) -> ${intentMatches ? '✅ MATCH' : '❌ MISMATCH'}`);
     console.log(`   📋 Headline: "${answer.headline}"`);
     console.log(`   🔍 Check: ${specificCheck.passed ? '✅' : '❌'} (${specificCheck.details})`);

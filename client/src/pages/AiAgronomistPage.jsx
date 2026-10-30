@@ -151,14 +151,10 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
     if (l === 'mr') {
       return {
         intent: 'general',
-        headline: `नमस्कार ${farmer}! मी तुमचा कृषी मित्र आहे.`,
-        likelyCause: `${cropName} पिकावरील कीड, रोग, फवारणी किंवा बाजारभावाबाबत विचारा.`,
+        headline: `नमस्कार ${farmer}! मी कृषी मित्र, तुमचा AI पीक सल्लागार आहे.`,
+        likelyCause: `तुमच्या ${cropName} पिकासाठी कीड नियंत्रण, हवामान व बाजारभावात मदत करण्यास तयार.`,
+        descriptiveAdvice: `मी तुमच्या ${activeProfile?.district || 'सातारा'} भागातील ${cropName} पिकासाठी सर्वसमावेशक कृषी सल्ला देण्यासाठी उपलब्ध आहे. तुम्ही पिकाच्या पानांवरील डाग, खत व्यवस्थापन, फवारणीसाठी योग्य हवामान किंवा आजचे कृषी उत्पन्न बाजारभाव विचारू शकता. थेट विचारण्यासाठी माइक बटण दाबा किंवा खालील प्रश्न निवडा.`,
         confidence: 'high',
-        steps: [
-          'माइक बटण दाबून तुमच्या शेतातील समस्या थेट बोला.',
-          'किंवा खालील प्रश्नांपैकी एक निवडा.',
-          'पिकावरील रोगाची खात्री करण्यासाठी रोग स्कॅनर वापरा.'
-        ],
         treatment: null,
         priceInfo: null,
         weatherNote: '',
@@ -169,20 +165,16 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
           'आजचा सोयाबीन बाजारभाव काय आहे?',
           'उद्या फवारणी करावी का?'
         ],
-        speakText: `नमस्कार ${farmer}! मी तुमचा कृषी मित्र आहे. तुमच्या शेतात काय समस्या येत आहे ते सांगा.`
+        speakText: `नमस्कार ${farmer}! मी कृषी मित्र, तुमचा AI पीक सल्लागार आहे. मी ${cropName} पिकासाठी रोग नियंत्रण, खत व्यवस्थापन आणि बाजारभावाची सविस्तर माहिती देऊ शकतो. विचारण्यासाठी माइक दाबा किंवा प्रश्न विचारा.`
       };
     }
     if (l === 'hi') {
       return {
         intent: 'general',
-        headline: `नमस्ते ${farmer}! मैं आपका कृषि मित्र हूँ।`,
+        headline: `नमस्ते ${farmer}! मैं कृषि मित्र, आपका एआई फसल सलाहकार हूँ।`,
         likelyCause: `${cropName} की फसल में कीट, रोग, स्प्रे या मंडी भाव के बारे में पूछें।`,
+        descriptiveAdvice: `मैं आपके ${activeProfile?.district || 'सतारा'} क्षेत्र में ${cropName} फसल के लिए विस्तृत कृषि सलाह देने के लिए उपलब्ध हूँ। आप अपनी फसल की पत्तियों पर दिखने वाले लक्षण बता सकते हैं, खाद-पानी के उपयोग, स्प्रे के लिए अनुकूल मौसम, या आज के बाजार भाव के बारे में पूछ सकते हैं। सीधे बोलकर पूछने के लिए माइक बटन दबाएं।`,
         confidence: 'high',
-        steps: [
-          'माइक बटन दबाकर अपने खेत की समस्या बोलकर बताएं।',
-          'या नीचे दिए गए सुझावों में से कोई सवाल चुनें।',
-          'रोग की सटीक पुष्टि के लिए रोग स्कैनर का उपयोग करें।'
-        ],
         treatment: null,
         priceInfo: null,
         weatherNote: '',
@@ -193,19 +185,15 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
           'सोयाबीन का आज का मंडी भाव क्या है?',
           'क्या कल कीटनाशक छिड़काव करना चाहिए?'
         ],
-        speakText: `नमस्ते ${farmer}! मैं आपका कृषि मित्र हूँ। अपने खेत की समस्या बताएं या सवाल पूछें।`
+        speakText: `नमस्ते ${farmer}! मैं कृषि मित्र, आपका एआई फसल सलाहकार हूँ। मैं ${cropName} फसल, रोग नियंत्रण, खाद व मौसम की विस्तृत सलाह देने के लिए तैयार हूँ। आप बोलकर या लिखकर अपना सवाल पूछ सकते हैं।`
       };
     }
     return {
       intent: 'general',
       headline: `Hello ${farmer}! I am Krishi Mitra, your AI Agronomist.`,
       likelyCause: `Ready to assist with your ${cropName} crop, pest control, weather or mandi prices.`,
+      descriptiveAdvice: `I am your personal agricultural advisor for ${cropName} in ${activeProfile?.district || 'Satara'}. You can describe any symptoms on your crop leaves, ask about fertilizer dosages, check weather feasibility for spraying, or verify current APMC mandi prices. Tap the microphone button to speak or tap any quick suggestion below to begin.`,
       confidence: 'high',
-      steps: [
-        'Tap the microphone to ask your field question directly.',
-        'Or tap any quick question chip below.',
-        'Use Disease Scanner to confirm leaf symptoms with a photo.'
-      ],
       treatment: null,
       priceInfo: null,
       weatherNote: '',
@@ -216,7 +204,7 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
         'Soybean rate in Latur today?',
         'Should I spray tomorrow?'
       ],
-      speakText: `Hello ${farmer}! I am Krishi Mitra. Tell me what is happening in your field or tap the microphone to speak.`
+      speakText: `Hello ${farmer}! I am Krishi Mitra, your AI Agronomist. I am ready to advise you on ${cropName} crop health, pest treatments, spraying weather, and mandi prices. Tap the microphone or ask any question to get started.`
     };
   };
 
@@ -691,12 +679,12 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
 
       setConversation((prev) => [...prev, assistantMsg]);
 
-      // Automatically speak read-aloud text if desired or keep ready
-      if (answer?.speakText) {
-        // Auto-play spoken headline + key steps
+      // Automatically speak read-aloud full text if available
+      const textToSpeak = answer?.speakText || answer?.descriptiveAdvice || answer?.headline;
+      if (textToSpeak) {
         const newIdx = conversation.length + 1;
         setSpeakingMsgIdx(newIdx);
-        VoiceAssistant.speak(answer.speakText, selectedLanguage, () => {
+        VoiceAssistant.speak(textToSpeak, selectedLanguage, () => {
           setSpeakingMsgIdx(null);
         });
       }
@@ -708,8 +696,8 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
           intent: 'general',
           headline: selectedLanguage === 'mr' ? 'सर्व्हरशी संपर्क होऊ शकला नाही' : selectedLanguage === 'hi' ? 'सर्वर से संपर्क नहीं हो पाया' : 'Could not reach agronomist service',
           likelyCause: err.message || 'Please check your connection and try again.',
+          descriptiveAdvice: selectedLanguage === 'mr' ? 'नेटवर्क किंवा सर्व्हरशी संपर्क होत नाही आहे. कृपया इंटरनेट तपासा आणि पुन्हा प्रयत्न करा.' : selectedLanguage === 'hi' ? 'नेटवर्क या सर्वर से संपर्क नहीं हो पा रहा है। कृपया इंटरनेट जांचें और पुनः प्रयास करें।' : 'Unable to connect to the agricultural advisory server. Please check your internet connection and retry.',
           confidence: 'low',
-          steps: ['Please retry in a few moments.'],
           treatment: null,
           priceInfo: null,
           weatherNote: '',
@@ -779,10 +767,11 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
         return [...next, assistantMsg];
       });
 
-      if (answer?.speakText) {
+      const voiceSpeakText = answer?.speakText || answer?.descriptiveAdvice || answer?.headline;
+      if (voiceSpeakText) {
         const newIdx = pendingUserIdx + 1;
         setSpeakingMsgIdx(newIdx);
-        VoiceAssistant.speak(answer.speakText, selectedLanguage, () => {
+        VoiceAssistant.speak(voiceSpeakText, selectedLanguage, () => {
           setSpeakingMsgIdx(null);
         });
       }
@@ -1131,10 +1120,10 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {renderConfidenceBadge(data.confidence)}
-                  {data.speakText && (
+                  {(data.speakText || data.descriptiveAdvice) && (
                     <button
                       type="button"
-                      onClick={() => handleToggleSpeak(idx, data.speakText)}
+                      onClick={() => handleToggleSpeak(idx, data.speakText || data.descriptiveAdvice || data.headline)}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -1198,80 +1187,54 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
                 </div>
               )}
 
-              {/* What to do now: interactive numbered checklist */}
-              {Array.isArray(data.steps) && data.steps.length > 0 && (
-                <div style={{ marginBottom: '14px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary-forest)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    📋 {selectedLanguage === 'mr' ? 'आत्ता काय करावे (कृती):' : selectedLanguage === 'hi' ? 'अभी क्या करें (कदम):' : 'What to do now:'}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {data.steps.map((step, sIdx) => {
-                      const stepKey = `${idx}-${sIdx}`;
-                      const isDone = checkedSteps.has(stepKey);
-                      return (
-                        <div
-                          key={sIdx}
-                          onClick={() => toggleStepCheck(stepKey)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            gap: '10px',
-                            padding: '8px 12px',
-                            backgroundColor: isDone ? '#F0FDF4' : 'var(--color-canvas-surface)',
-                            border: `1px solid ${isDone ? '#86EFAC' : 'var(--color-border-subtle)'}`,
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            userSelect: 'none',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          <div style={{ marginTop: '2px', color: isDone ? '#16A34A' : '#9CA3AF' }}>
-                            {isDone ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-                          </div>
-                          <div style={{ flex: 1, fontSize: '0.9rem', color: isDone ? '#4B5563' : 'var(--color-text-main)', textDecoration: isDone ? 'line-through' : 'none', lineHeight: 1.4 }}>
-                            <strong style={{ marginRight: '6px', color: isDone ? '#9CA3AF' : 'var(--color-primary-forest)' }}>
-                              {sIdx + 1}.
-                            </strong>
-                            {step}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Collapsible toggle for deep treatment or additional info */}
-              {hasTreatment && (
-                <div style={{ marginBottom: '12px' }}>
-                  <button
-                    type="button"
-                    onClick={() => toggleDetails(idx)}
+              {/* Descriptive Agricultural Advice Card (Medium length natural paragraphs) */}
+              {(data.descriptiveAdvice || (Array.isArray(data.steps) && data.steps.length > 0)) && (
+                <div
+                  style={{
+                    backgroundColor: '#F9FAF9',
+                    border: '1.5px solid #E2E8E2',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '16px 18px',
+                    marginBottom: '16px',
+                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
+                  }}
+                >
+                  <div
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px',
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--color-leaf-green)',
-                      fontSize: '0.82rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      padding: '4px 0'
+                      justifyContent: 'space-between',
+                      marginBottom: '10px',
+                      paddingBottom: '8px',
+                      borderBottom: '1px solid #ECEEEA'
                     }}
                   >
-                    <span>
-                      {isExpanded
-                        ? (selectedLanguage === 'mr' ? 'उपचार तपशील लपवा' : selectedLanguage === 'hi' ? 'उपचार विवरण छुपाएं' : 'Hide Treatment Details')
-                        : (selectedLanguage === 'mr' ? '🌿 औषध व उपचार तपशील पहा' : selectedLanguage === 'hi' ? '🌿 दवा और उपचार विवरण देखें' : '🌿 View Treatment & Dose Details')}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Sprout size={16} color="var(--color-leaf-green)" />
+                      <strong style={{ fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-primary-forest)' }}>
+                        {selectedLanguage === 'mr' ? 'विस्तृत कृषी सल्ला व मार्गदर्शन' : selectedLanguage === 'hi' ? 'विस्तृत कृषि सलाह व मार्गदर्शन' : 'Agronomic Guidance & Diagnosis'}
+                      </strong>
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                      {selectedLanguage === 'mr' ? 'तज्ज्ञ विश्लेषण' : selectedLanguage === 'hi' ? 'विशेषज्ञ विश्लेषण' : 'Agronomist Analysis'}
                     </span>
-                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </button>
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: '0.96rem',
+                      lineHeight: 1.68,
+                      color: 'var(--color-text-main)',
+                      whiteSpace: 'pre-line'
+                    }}
+                  >
+                    {data.descriptiveAdvice || data.steps?.join('\n\n')}
+                  </div>
                 </div>
               )}
 
-              {/* Treatment card: side-by-side tiles (shown if expanded or short view) */}
-              {hasTreatment && (isExpanded || !data.steps || data.steps.length <= 2) && (
+              {/* Treatment card: side-by-side tiles */}
+              {hasTreatment && (
                 <div
                   style={{
                     display: 'grid',
