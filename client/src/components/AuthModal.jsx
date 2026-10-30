@@ -358,59 +358,6 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess, lang = 'en' }) {
               >
                 {loading ? t.auth.signingIn : t.auth.submitSignIn}
               </button>
-
-              {/* Quick Demo Logins for instant testing */}
-              <div style={{ marginTop: '12px', borderTop: '1px solid var(--color-border-subtle)', paddingTop: '14px' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '8px', textAlign: 'center' }}>
-                  {lang === 'mr' ? '⚡ किंवा एका क्लिकवर डेमो खात्यात प्रवेश करा:' : lang === 'hi' ? '⚡ या एक क्लिक में डेमो खाते से लॉगिन करें:' : '⚡ Or quick sign-in with verified profile:'}
-                </span>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail('ramesh@sfas.in');
-                      setPassword('demo123');
-                      executeLogin('ramesh@sfas.in', 'demo123');
-                    }}
-                    style={{
-                      padding: '8px 10px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--color-border-subtle)',
-                      backgroundColor: 'var(--color-canvas-surface)',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      color: 'var(--color-primary-forest)'
-                    }}
-                  >
-                    👨🏽‍🌾 <strong>Ramesh Patil</strong>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Nashik • Tomato</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail('rajesh@sfas.in');
-                      setPassword('demo123');
-                      executeLogin('rajesh@sfas.in', 'demo123');
-                    }}
-                    style={{
-                      padding: '8px 10px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--color-border-subtle)',
-                      backgroundColor: 'var(--color-canvas-surface)',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      color: 'var(--color-primary-forest)'
-                    }}
-                  >
-                    🌾 <strong>Rajesh Deshmukh</strong>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Latur • Soybean</div>
-                  </button>
-                </div>
-              </div>
             </form>
           ) : (
             <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
