@@ -90,16 +90,120 @@ export class VoiceAssistant {
   static heartbeatTimer = null;
 
   /**
+   * Pre-processes and cleans text for speech synthesis:
+   * 1. Strips all emojis and pictographs so the TTS engine doesn't read their descriptions aloud.
+   * 2. Replaces currency, units, chemical acronyms and abbreviations with native spoken phrases.
+   * 3. Cleans markdown and strange punctuation.
+   */
+  static normalizeTextForSpeech(text, lang = 'en') {
+    if (!text) return '';
+    let s = String(text)
+      .replace(/===[A-Z]+===/g, ' ')
+      .replace(/[*#_`~>]/g, '')
+      // Remove all emojis (smileys, symbols, pictographs)
+      .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F000}-\u{1F2FF}]/gu, '')
+      .replace(/\s+/g, ' ');
+
+    const isMarathi = lang === 'mr';
+    const isHindi = lang === 'hi';
+
+    if (isMarathi || isHindi) {
+      s = s
+        .replace(/₹\s*(\d+(?:,\d+)*(?:\.\d+)?)/g, '$1 रुपये')
+        .replace(/\/quintal|\/q|\/क्विंटल/gi, ' प्रति क्विंटल')
+        .replace(/(\d+)\s*g\/[Ll]/gi, '$1 ग्रॅम प्रति लिटर')
+        .replace(/(\d+)\s*ml\/[Ll]/gi, '$1 मिली प्रति लिटर')
+        .replace(/15\s*[Ll]\b/gi, '15 लिटर')
+        .replace(/CIB&RC|CIB & RC/gi, isMarathi ? 'केंद्रीय कीटकनाशक मंडळ' : 'केंद्रीय कीटनाशक मंडल')
+        .replace(/\bPHI\b/gi, isMarathi ? 'काढणी अंतर' : 'तुड़ाई अंतर')
+        .replace(/\bWP\b/gi, 'डब्ल्यु पी')
+        .replace(/\bEC\b/gi, 'ई सी')
+        .replace(/\bSC\b/gi, 'एस सी')
+        .replace(/\bKVK\b/gi, 'कृषी विज्ञान केंद्र')
+        .replace(/\bAPMC\b/gi, isMarathi ? 'बाजार समिती' : 'कृषि मंडी');
+    } else {
+      s = s
+        .replace(/₹\s*(\d+(?:,\d+)*(?:\.\d+)?)/g, 'Rs. $1')
+        .replace(/\/quintal|\/q/gi, ' per quintal')
+        .replace(/(\d+)\s*g\/[Ll]/gi, '$1 grams per litre')
+        .replace(/(\d+)\s*ml\/[Ll]/gi, '$1 ml per litre')
+        .replace(/15\s*[Ll]\b/gi, '15 litre')
+        .replace(/CIB&RC|CIB & RC/gi, 'CIB and RC')
+        .replace(/\bKVK\b/gi, 'Krishi Vigyan Kendra');
+    }
+
+    return s.trim();
+  }
+
+  /**
+   * Finds the best matching voice installed on the user's OS/browser.
+   * If Marathi voice is not installed (e.g. on macOS or Windows default),
+   * falls back to a high-quality Hindi Devanagari voice (e.g. Lekha, Google हिन्दी)
+   * instead of falling back to English (which sounds completely garbled/weird).
+   */
+  static getBestVoice(targetLang = 'en') {
+    if (!this.isSynthesisSupported()) return null;
+    const voices = window.speechSynthesis.getVoices() || [];
+    if (voices.length === 0) return null;
+
+    const normalizedLang = (targetLang || 'en').toLowerCase();
+
+    // 1. Marathi requested:
+    if (normalizedLang.startsWith('mr')) {
+      // Direct Marathi voice
+      const mrVoice = voices.find(v => 
+        (v.lang && (v.lang.toLowerCase() === 'mr-in' || v.lang.toLowerCase() === 'mr_in' || v.lang.toLowerCase().startsWith('mr'))) ||
+        /marathi|मराठी/i.test(v.name)
+      );
+      if (mrVoice) return { voice: mrVoice, lang: mrVoice.lang || 'mr-IN' };
+
+      // Devanagari Hindi voice fallback (Lekha on Mac, Google हिन्दी in Chrome, Microsoft Swara on Windows)
+      // Both languages share the Devanagari phonetic alphabet and read Marathi text clearly
+      const hiVoice = voices.find(v => 
+        (v.lang && (v.lang.toLowerCase() === 'hi-in' || v.lang.toLowerCase() === 'hi_in' || v.lang.toLowerCase().startsWith('hi'))) ||
+        /hindi|हिन्दी|lekha|nilam|swara|madhur|kalpana|hemant/i.test(v.name)
+      );
+      if (hiVoice) return { voice: hiVoice, lang: 'hi-IN' };
+
+      // Other Indian voice
+      const inVoice = voices.find(v => v.lang && (v.lang.includes('-IN') || v.lang.includes('_IN')));
+      if (inVoice) return { voice: inVoice, lang: inVoice.lang };
+    }
+
+    // 2. Hindi requested:
+    if (normalizedLang.startsWith('hi')) {
+      const hiVoice = voices.find(v => 
+        (v.lang && (v.lang.toLowerCase() === 'hi-in' || v.lang.toLowerCase() === 'hi_in' || v.lang.toLowerCase().startsWith('hi'))) ||
+        /hindi|हिन्दी|lekha|nilam|swara|madhur|kalpana|hemant/i.test(v.name)
+      );
+      if (hiVoice) return { voice: hiVoice, lang: hiVoice.lang || 'hi-IN' };
+
+      const mrVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('mr'));
+      if (mrVoice) return { voice: mrVoice, lang: mrVoice.lang };
+    }
+
+    // 3. English requested:
+    if (normalizedLang.startsWith('en')) {
+      const enInVoice = voices.find(v => 
+        (v.lang && (v.lang.toLowerCase() === 'en-in' || v.lang.toLowerCase() === 'en_in')) ||
+        /india|rishi|heera|veena|neerja|prabhat/i.test(v.name)
+      );
+      if (enInVoice) return { voice: enInVoice, lang: 'en-IN' };
+
+      const enVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+      if (enVoice) return { voice: enVoice, lang: enVoice.lang };
+    }
+
+    return { voice: voices[0], lang: 'en-IN' };
+  }
+
+  /**
    * Splits long text into short, natural sentences for reliable browser speech synthesis.
    * Prevents browser 15-second speech cutoffs and buffer overflow.
    */
-  static splitIntoSentences(text) {
+  static splitIntoSentences(text, lang = 'en') {
     if (!text) return [];
-    const cleaned = String(text)
-      .replace(/===[A-Z]+===/g, ' ')
-      .replace(/[*#_`]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+    const cleaned = this.normalizeTextForSpeech(text, lang);
 
     // Match sentences ending in ., !, ?, or Devanagari danda ।
     const matches = cleaned.match(/[^.!?।\n]+[.!?।\n]*/g);
@@ -119,7 +223,7 @@ export class VoiceAssistant {
 
     this.stopSpeaking();
 
-    const sentences = this.splitIntoSentences(text);
+    const sentences = this.splitIntoSentences(text, lang);
     if (sentences.length === 0) {
       if (onComplete) onComplete();
       return;
@@ -137,10 +241,7 @@ export class VoiceAssistant {
    */
   static enqueueSentence(sentence, lang = 'en', onStartFirst = null, onSentenceEnd = null) {
     if (!this.isSynthesisSupported()) return;
-    const clean = String(sentence || '')
-      .replace(/===[A-Z]+===/g, ' ')
-      .replace(/[*#_`]/g, '')
-      .trim();
+    const clean = this.normalizeTextForSpeech(sentence, lang);
     if (!clean) return;
 
     this.currentLanguage = lang;
@@ -191,9 +292,17 @@ export class VoiceAssistant {
     // Keep reference in Set so browser garbage collection does not abort speech mid-sentence
     this.activeUtterances.add(utterance);
 
-    const langMap = { en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN' };
-    utterance.lang = langMap[this.currentLanguage] || 'en-IN';
-    utterance.rate = 0.94;
+    const voiceInfo = this.getBestVoice(this.currentLanguage);
+    if (voiceInfo && voiceInfo.voice) {
+      utterance.voice = voiceInfo.voice;
+      utterance.lang = voiceInfo.lang || (this.currentLanguage === 'mr' ? 'mr-IN' : 'en-IN');
+    } else {
+      const langMap = { en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN' };
+      utterance.lang = langMap[this.currentLanguage] || 'en-IN';
+    }
+
+    // Calibrated rate (0.90) ensures crisp, unhurried articulation for Marathi & Hindi Devanagari phonemes
+    utterance.rate = this.currentLanguage === 'mr' || this.currentLanguage === 'hi' ? 0.90 : 0.94;
     utterance.pitch = 1.0;
 
     let started = false;
@@ -233,4 +342,16 @@ export class VoiceAssistant {
       } catch (e) {}
     }
   }
+}
+
+// Pre-load and cache browser voices as soon as they become ready
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  try {
+    window.speechSynthesis.getVoices();
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        try { window.speechSynthesis.getVoices(); } catch (e) {}
+      };
+    }
+  } catch (e) {}
 }
