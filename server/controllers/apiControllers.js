@@ -1,11 +1,14 @@
 import { AuthService, FarmerService } from '../services/authAndFarmerService.js';
+import { normalizeLang } from '../config/serverI18n.js';
 import { CropAdvisorService, RoiCalculatorService } from '../services/cropAndRoiService.js';
 import { DiseaseDetectionService } from '../services/diseaseDetectionService.js';
+import { queryOne } from '../models/db.js';
+import { findRegionCrop } from '../config/maharashtra.js';
 import { SmartMandiService, LogisticsService } from '../services/mandiAndLogisticsService.js';
 import { WeatherService, AlertRuleEngine } from '../services/weatherAndAlertService.js';
 import { AgronomistRagService, GovernmentSchemeService } from '../services/agronomistAndSchemeService.js';
-import { syncMandiPrices, ingestAgmarknetRecords } from '../services/agmarknetService.js';
-import { REGION_STATE, MAHARASHTRA_DISTRICTS, REGION_CROPS, MSP_YEAR_LABEL } from '../config/maharashtra.js';
+import { syncMandiPrices } from '../services/agmarknetService.js';
+import { REGION_STATE, MAHARASHTRA_DISTRICTS, REGION_CROPS, MSP_YEAR_LABEL, findDistrict } from '../config/maharashtra.js';
 import { generate, transcribeAudio, isGeminiConfigured, splitDataUrl, LANGUAGE_NAMES } from '../services/geminiService.js';
 
 export const AuthController = {
@@ -62,8 +65,7 @@ export const AuthController = {
 export const FarmerController = {
     async getProfile(req, res, next) {
         try {
-            const userId = req.query.userId ? Number(req.query.userId) : 1;
-            const context = await FarmerService.getFarmerContext(userId);
+            const context = await FarmerService.getFarmerContext(req.user.id);
             res.json({ success: true, data: context });
         } catch (err) {
             next(err);
@@ -72,8 +74,17 @@ export const FarmerController = {
 
     async updateFarm(req, res, next) {
         try {
-            const farmId = Number(req.params.farmId || 1);
-            const updated = await FarmerService.updateFarm(farmId, req.body);
+            // Always edits the signed-in farmer's own farm (the id in the URL is ignored)
+            const own = await FarmerService.getFarmerContext(req.user.id);
+            if (!own?.farm) {
+                return res.status(404).json({ success: false, error: { code: 'NO_FARM', message: 'No farm found for this account.' } });
+            }
+            const updated = await FarmerService.updateFarm(own.farm.id, req.body);
+            if (req.body.district && findDistrict(req.body.district)) {
+                await FarmerService.updateProfileLocation(req.user.id, { district: findDistrict(req.body.district).name, fullName: req.body.full_name });
+            } else if (req.body.full_name) {
+                await FarmerService.updateProfileLocation(req.user.id, { fullName: req.body.full_name });
+            }
             res.json({ success: true, data: updated });
         } catch (err) {
             next(err);
@@ -122,11 +133,12 @@ export const CropController = {
 export const DiseaseController = {
     async diagnose(req, res, next) {
         try {
-            const { cropName, imageBase64, farmId, language } = req.body;
+            const { cropName, imageBase64, language } = req.body;
+            const own = await FarmerService.getFarmerContext(req.user.id);
             const result = await DiseaseDetectionService.diagnoseImage({
                 cropName,
                 imageBase64,
-                farmId: farmId ? Number(farmId) : 1,
+                farmId: own?.farm?.id ?? null,
                 language: language || 'en'
             });
             res.json({ success: true, data: result });
@@ -137,8 +149,8 @@ export const DiseaseController = {
 
     async getHistory(req, res, next) {
         try {
-            const farmId = req.query.farmId ? Number(req.query.farmId) : 1;
-            const history = await DiseaseDetectionService.getRecentScans(farmId);
+            const own = await FarmerService.getFarmerContext(req.user.id);
+            const history = own?.farm ? await DiseaseDetectionService.getRecentScans(own.farm.id) : [];
             res.json({ success: true, data: history });
         } catch (err) {
             next(err);
@@ -153,7 +165,8 @@ export const MandiController = {
             const comparison = await SmartMandiService.compareMandis({
                 cropName: crop,
                 produceQuantityQuintal: Number(quantity),
-                userDistrict: district
+                userDistrict: district,
+                lang: normalizeLang(req.query.lang)
             });
             res.json({ success: true, data: comparison });
         } catch (err) {
@@ -185,16 +198,6 @@ export const MandiController = {
         }
     },
 
-    async ingest(req, res, next) {
-        try {
-            const records = req.body?.records || [];
-            const rowsSaved = await ingestAgmarknetRecords(records);
-            res.json({ success: true, data: { rowsSaved, status: SmartMandiService.getStatus() } });
-        } catch (err) {
-            next(err);
-        }
-    },
-
     async getPools(req, res, next) {
         try {
             const pools = await LogisticsService.getAvailablePools(req.query);
@@ -206,7 +209,7 @@ export const MandiController = {
 
     async joinPool(req, res, next) {
         try {
-            const result = await LogisticsService.joinPool(req.body);
+            const result = await LogisticsService.joinPool({ ...req.body, userId: req.user.id });
             res.json({ success: true, data: result });
         } catch (err) {
             next(err);
@@ -217,13 +220,13 @@ export const MandiController = {
 export const PoolsController = {
     async list(req, res, next) {
         try {
-            const { crop, district, mandi, quantity, userId } = req.query;
+            const { crop, district, mandi, quantity } = req.query;
             const pools = await LogisticsService.getAvailablePools({
                 crop,
                 district,
                 mandi,
                 quantity: quantity ? Number(quantity) : 25,
-                userId: userId ? Number(userId) : null
+                userId: req.user?.id ?? null
             });
             res.json({ success: true, data: pools });
         } catch (err) {
@@ -233,11 +236,7 @@ export const PoolsController = {
 
     async mine(req, res, next) {
         try {
-            const userId = req.query.userId || req.user?.id;
-            if (!userId) {
-                return res.json({ success: true, data: [] });
-            }
-            const pools = await LogisticsService.getUserPools(Number(userId));
+            const pools = await LogisticsService.getUserPools(req.user.id);
             res.json({ success: true, data: pools });
         } catch (err) {
             next(err);
@@ -246,7 +245,7 @@ export const PoolsController = {
 
     async create(req, res, next) {
         try {
-            const pool = await LogisticsService.createPool(req.body);
+            const pool = await LogisticsService.createPool({ ...req.body, userId: req.user.id });
             res.status(201).json({ success: true, data: pool });
         } catch (err) {
             if (err.message?.includes('required') || err.message?.includes('cannot be in the past') || err.message?.includes('exceeds')) {
@@ -259,10 +258,10 @@ export const PoolsController = {
     async join(req, res, next) {
         try {
             const poolId = Number(req.params.id);
-            const { userId, quantity, farmerName, phone } = req.body;
+            const { quantity, farmerName, phone } = req.body;
             const result = await LogisticsService.joinPool({
                 poolId,
-                userId: userId ? Number(userId) : 1,
+                userId: req.user.id,
                 quantity: Number(quantity) || 25,
                 farmerName,
                 phone
@@ -289,8 +288,11 @@ export const PoolsController = {
     async leave(req, res, next) {
         try {
             const poolId = Number(req.params.id);
-            const userId = Number(req.params.userId);
-            const result = await LogisticsService.leavePool({ poolId, userId });
+            // A farmer can only remove themselves from a pool
+            if (Number(req.params.userId) !== req.user.id) {
+                return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You can only leave pools you joined.' } });
+            }
+            const result = await LogisticsService.leavePool({ poolId, userId: req.user.id });
             res.json({ success: true, data: result });
         } catch (err) {
             next(err);
@@ -302,7 +304,7 @@ export const WeatherAlertController = {
     async getForecast(req, res, next) {
         try {
             const district = req.query.district || 'Nashik';
-            const forecast = await WeatherService.getWeatherForecast(district);
+            const forecast = await WeatherService.getWeatherForecast(district, normalizeLang(req.query.lang));
             res.json({ success: true, data: forecast });
         } catch (err) {
             next(err);
@@ -312,7 +314,7 @@ export const WeatherAlertController = {
     async getTodayStatus(req, res, next) {
         try {
             const { district = 'Nashik', crop = 'Tomato', stage = 'Flowering to Fruit Set' } = req.query;
-            const status = await WeatherService.getTodayAgroWeather(district, crop, stage);
+            const status = await WeatherService.getTodayAgroWeather(district, crop, stage, normalizeLang(req.query.lang));
             res.json({ success: true, data: status });
         } catch (err) {
             next(err);
@@ -322,7 +324,7 @@ export const WeatherAlertController = {
     async getAlerts(req, res, next) {
         try {
             const { district = 'Nashik', crop = 'Tomato', stage = 'Flowering to Fruit Set' } = req.query;
-            const alerts = await AlertRuleEngine.getActiveAlerts(district, crop, stage);
+            const alerts = await AlertRuleEngine.getActiveAlerts(district, crop, stage, normalizeLang(req.query.lang));
             res.json({ success: true, data: alerts });
         } catch (err) {
             next(err);
@@ -337,7 +339,7 @@ export const AgronomistController = {
             if (!question || question.trim().length === 0) {
                 return res.status(400).json({ success: false, error: { message: 'Question cannot be empty' } });
             }
-            const advice = await AgronomistRagService.consult({ question, farmerId: Number(farmerId), language, history });
+            const advice = await AgronomistRagService.consult({ question, farmerId: req.user.id, language, history });
             res.json({ success: true, data: advice });
         } catch (err) {
             next(err);
@@ -364,7 +366,7 @@ export const AgronomistController = {
 
             const answer = await AgronomistRagService.consult({
                 question: transcript,
-                farmerId: Number(farmerId),
+                farmerId: req.user.id,
                 language,
                 history
             });
@@ -385,7 +387,7 @@ export const AgronomistController = {
         try {
             const { farmerId = 1, district = 'Nashik', crop = 'Tomato' } = req.query;
             const result = await AgronomistRagService.warmup({
-                farmerId: Number(farmerId),
+                farmerId: req.user.id,
                 district,
                 crop
             });
@@ -424,7 +426,7 @@ export const AgronomistController = {
                 question,
                 audioBase64,
                 audioMimeType,
-                farmerId: Number(farmerId),
+                farmerId: req.user.id,
                 language,
                 history,
                 signal: abortController.signal,
@@ -486,8 +488,76 @@ export const SchemeController = {
     async list(req, res, next) {
         try {
             const { crop, landCategory, state } = req.query;
-            const schemes = await GovernmentSchemeService.getSchemes({ cropName: crop, landCategory, state });
+            const schemes = await GovernmentSchemeService.getSchemes({ cropName: crop, landCategory, state, lang: normalizeLang(req.query.lang) });
             res.json({ success: true, data: schemes });
+        } catch (err) {
+            next(err);
+        }
+    }
+};
+
+// Dashboard: the farmer's real numbers in one request. Each part is optional, so one failing
+// source (e.g. no mandi report for this crop) does not hide the others.
+export const DashboardController = {
+    async summary(req, res, next) {
+        try {
+            const {
+                district = 'Nashik', crop = 'Tomato', acres = 2,
+                soil = 'Black Soil (Regur)', water = 'Moderately Reliable'
+            } = req.query;
+            const lang = normalizeLang(req.query.lang);
+            const landSizeAcres = Math.min(Math.max(Number(acres) || 2, 0.1), 500);
+
+            // Match the farm crop to the crops table ("Chilli" -> "Green Chilli", "Rice" -> "Rice (Paddy)")
+            const regionCrop = findRegionCrop(crop);
+            const cropRow = await queryOne(
+                "SELECT * FROM crops WHERE LOWER(name) = LOWER(?) OR LOWER(name) = LOWER(?) OR LOWER(name) LIKE LOWER(?) LIMIT 1",
+                [crop, regionCrop?.name || crop, `%${String(crop).split(' ')[0]}%`]
+            );
+
+            const [mandiRes, trendRes, roiRes] = await Promise.allSettled([
+                SmartMandiService.compareMandis({ cropName: crop, produceQuantityQuintal: 10, userDistrict: district, lang }),
+                SmartMandiService.getPriceTrend(crop, 30),
+                cropRow
+                    ? RoiCalculatorService.calculateCropRoi({ cropId: cropRow.id, landSizeAcres, soilType: soil, waterReliability: water, district })
+                    : Promise.reject(new Error('No cost data for this crop'))
+            ]);
+
+            const mandi = mandiRes.status === 'fulfilled' ? mandiRes.value : null;
+            const roi = roiRes.status === 'fulfilled' ? roiRes.value : null;
+
+            res.json({
+                success: true,
+                data: {
+                    crop: { name: cropRow?.name || regionCrop?.name || crop, msp: regionCrop?.msp ?? null, durationDays: roi?.crop?.durationDays ?? cropRow?.duration_days ?? null },
+                    mandi: mandi ? {
+                        nearest: [...mandi.mandis].sort((a, b) => a.distanceKm - b.distanceKm).slice(0, 3),
+                        best: mandi.mandis[0] || null,
+                        totalMandisReporting: mandi.totalMandisReporting,
+                        latestArrivalDate: mandi.latestArrivalDate,
+                        daysSinceLatest: mandi.dataSource?.daysSinceLatest ?? null,
+                        isSnapshot: mandi.dataSource?.isSnapshot ?? false,
+                        msp: mandi.crop?.msp ?? null
+                    } : null,
+                    trend: trendRes.status === 'fulfilled' ? trendRes.value : [],
+                    income: roi ? {
+                        landSizeAcres,
+                        yieldPerAcre: roi.parameters.yieldPerAcreQuintal,
+                        totalYieldQuintal: roi.parameters.totalProjectedYieldQuintal,
+                        pricePerQuintal: roi.parameters.assumedPricePerQuintal,
+                        priceSource: roi.parameters.priceSource,
+                        priceMarkets: roi.parameters.priceMarkets,
+                        priceAsOf: roi.parameters.priceAsOf,
+                        priceScope: roi.parameters.priceScope,
+                        totalCost: roi.financialProjections.totalEstimatedInvestment,
+                        grossIncome: roi.financialProjections.projectedGrossRevenue,
+                        netProfit: roi.financialProjections.projectedNetProfit,
+                        breakEvenPrice: roi.financialProjections.breakEvenPricePerQuintal,
+                        costSource: roi.crop.source || null,
+                        costYear: roi.crop.year || null
+                    } : null
+                }
+            });
         } catch (err) {
             next(err);
         }

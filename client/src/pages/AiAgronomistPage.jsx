@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { districtLabel } from '../config/maharashtra.js';
 import {
   Mic,
   MicOff,
@@ -153,7 +154,7 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
         intent: 'general',
         headline: `नमस्कार ${farmer}! मी कृषी मित्र, तुमचा AI पीक सल्लागार आहे.`,
         likelyCause: `तुमच्या ${cropName} पिकासाठी कीड नियंत्रण, हवामान व बाजारभावात मदत करण्यास तयार.`,
-        descriptiveAdvice: `मी तुमच्या ${activeProfile?.district || 'सातारा'} भागातील ${cropName} पिकासाठी सर्वसमावेशक कृषी सल्ला देण्यासाठी उपलब्ध आहे. तुम्ही पिकाच्या पानांवरील डाग, खत व्यवस्थापन, फवारणीसाठी योग्य हवामान किंवा आजचे कृषी उत्पन्न बाजारभाव विचारू शकता. थेट विचारण्यासाठी माइक बटण दाबा किंवा खालील प्रश्न निवडा.`,
+        descriptiveAdvice: `मी तुमच्या ${districtLabel(activeProfile?.district || 'Satara', 'mr')} भागातील ${cropName} पिकासाठी सर्वसमावेशक कृषी सल्ला देण्यासाठी उपलब्ध आहे. तुम्ही पिकाच्या पानांवरील डाग, खत व्यवस्थापन, फवारणीसाठी योग्य हवामान किंवा आजचे कृषी उत्पन्न बाजारभाव विचारू शकता. थेट विचारण्यासाठी माइक बटण दाबा किंवा खालील प्रश्न निवडा.`,
         confidence: 'high',
         treatment: null,
         priceInfo: null,
@@ -173,7 +174,7 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
         intent: 'general',
         headline: `नमस्ते ${farmer}! मैं कृषि मित्र, आपका एआई फसल सलाहकार हूँ।`,
         likelyCause: `${cropName} की फसल में कीट, रोग, स्प्रे या मंडी भाव के बारे में पूछें।`,
-        descriptiveAdvice: `मैं आपके ${activeProfile?.district || 'सतारा'} क्षेत्र में ${cropName} फसल के लिए विस्तृत कृषि सलाह देने के लिए उपलब्ध हूँ। आप अपनी फसल की पत्तियों पर दिखने वाले लक्षण बता सकते हैं, खाद-पानी के उपयोग, स्प्रे के लिए अनुकूल मौसम, या आज के बाजार भाव के बारे में पूछ सकते हैं। सीधे बोलकर पूछने के लिए माइक बटन दबाएं।`,
+        descriptiveAdvice: `मैं आपके ${districtLabel(activeProfile?.district || 'Satara', 'hi')} क्षेत्र में ${cropName} फसल के लिए विस्तृत कृषि सलाह देने के लिए उपलब्ध हूँ। आप अपनी फसल की पत्तियों पर दिखने वाले लक्षण बता सकते हैं, खाद-पानी के उपयोग, स्प्रे के लिए अनुकूल मौसम, या आज के बाजार भाव के बारे में पूछ सकते हैं। सीधे बोलकर पूछने के लिए माइक बटन दबाएं।`,
         confidence: 'high',
         treatment: null,
         priceInfo: null,

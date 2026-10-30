@@ -1,4 +1,5 @@
 import { query, queryOne } from '../models/db.js';
+import { localizeScheme } from '../config/schemeContent.js';
 import { REGION_STATE, REGION_CROPS } from '../config/maharashtra.js';
 import { generate, streamGenerate, resolveOptimizedModel, LANGUAGE_NAMES } from './geminiService.js';
 import { getLatestCropPrices } from './agmarknetService.js';
@@ -452,7 +453,7 @@ RULES:
 }
 
 export class GovernmentSchemeService {
-    static async getSchemes({ cropName, landCategory, state = 'Maharashtra' }) {
+    static async getSchemes({ cropName, landCategory, state = 'Maharashtra', lang = 'en' }) {
         let sql = "SELECT * FROM government_schemes WHERE 1=1";
         const params = [];
 
@@ -462,7 +463,7 @@ export class GovernmentSchemeService {
         }
 
         const schemes = await query(sql, params);
-        return schemes;
+        return schemes.map(row => localizeScheme(row, lang));
     }
 
     static async getSchemeById(id) {

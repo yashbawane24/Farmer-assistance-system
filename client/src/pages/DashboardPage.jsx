@@ -1,1181 +1,483 @@
 import React, { useState, useEffect } from 'react';
-import { POPULAR_DISTRICTS } from '../config/maharashtra.js';
-import { 
-  Search, Sprout, CloudRain, Sun, CloudSun, Moon, CloudMoon, Thermometer, Droplets, Wind,
-  ShieldAlert, ShoppingBag, Mic, ArrowRight, CheckCircle2, AlertTriangle, 
-  Calendar, MapPin, TrendingUp, ChevronDown, Check, ExternalLink, Sparkles
+import {
+  CloudRain, Sun, CloudSun, Moon, CloudMoon, Droplets, Wind, Thermometer, Umbrella,
+  ShieldAlert, ShoppingBag, Mic, Truck, FileText, Sprout, ArrowRight, AlertTriangle,
+  MapPin, CalendarDays, Info, RefreshCw
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { AudioSpeaker } from '../components/AudioSpeaker.jsx';
-import { 
-  getTranslation, 
-  translateWeatherCondition, 
-  translateCropName, 
-  translateDayName, 
-  translateMonthName, 
-  translateFullDate 
+import { DistrictSelect } from '../components/DistrictSelect.jsx';
+import { districtLabel, isMaharashtraDistrict } from '../config/maharashtra.js';
+import {
+  translateWeatherCondition,
+  translateCropName,
+  translateCropStage,
+  translateSoilType,
+  translateWaterReliability
 } from '../services/i18n.js';
 
+// Every label on this page, in all three languages
+const TEXT = {
+  en: {
+    greeting: 'Namaskar', todayAdvice: "Today's advice for your farm", listen: 'Listen',
+    weatherSource: 'Live weather: Open-Meteo', updated: 'updated',
+    myFarm: 'My farm', crop: 'Crop', stage: 'Stage', area: 'Area', acres: 'acres', soil: 'Soil', water: 'Water',
+    sowing: 'Sown on', dayOf: 'Day {day} of about {total}', pastDuration: 'Day {day} since sowing - usual crop length is about {total} days, so harvest is due.', addSowing: 'Add your sowing date in My Farm to track crop days.', editFarm: 'Edit my farm',
+    mandiTitle: "Today's mandi rate", nearYou: 'APMCs nearest to you', perQ: '/quintal', reported: 'Reported',
+    km: 'km', mspLabel: 'Government MSP', aboveMsp: 'above MSP', belowMsp: 'below MSP',
+    staleWarn: 'Latest price is {days} days old. Mandi may be closed or not reported yet.',
+    snapshotWarn: 'Live prices not synced yet - showing the last saved Agmarknet report.',
+    noMandi: 'No Maharashtra APMC has reported {crop} in the last 15 days.',
+    mandiSource: 'Source: Agmarknet, Government of India', compareAll: 'Compare all mandis',
+    incomeTitle: 'Expected income from your crop', incomeSub: 'Estimate for {acres} acres of {crop}',
+    yieldLine: 'Expected harvest', priceLine: 'Price used', grossLine: 'Expected sale value', costLine: 'Cultivation cost', profitLine: 'Expected profit', lossLine: 'Expected loss',
+    breakEven: 'You need at least ₹{price}/quintal to cover costs.',
+    priceLive: 'average of {n} APMC{s} in {scope}, {date}', priceMsp: 'Government MSP (no recent mandi report)', priceHist: 'long-term average (no recent mandi report)',
+    costSrc: 'Cost & yield source', estimateNote: 'This is an estimate. Real income depends on rain, pests and the price on the day you sell.',
+    noIncome: 'Cost data is not available for this crop yet.', openAdvisor: 'Open Crop Advisor',
+    trendTitle: 'Price trend - last 30 days', trendSub: 'Average modal price across Maharashtra APMCs (₹/quintal)', trendFew: 'Not enough days of price data yet.',
+    weatherNow: 'Weather now', feels: 'Feels like', maxMin: 'Max / Min today', humidity: 'Humidity', rain: 'Rain chance', wind: 'Wind',
+    todayHours: 'Today', morning: 'Morning 9 am', afternoon: 'Afternoon 3 pm', evening: 'Evening 6 pm', night: 'Night 9 pm',
+    next4: 'Next 4 days', weatherDown: 'Live weather is unavailable right now. Please try again in a few minutes.',
+    alerts: 'Alerts for your crop', noAlerts: 'No warnings for your crop today.',
+    quick: 'Quick actions', manageFarm: 'Manage your farm', scan: 'Scan a leaf', scanSub: 'Photo diagnosis by AI', ask: 'Ask Krishi Mitra', askSub: 'Voice or text', pools: 'Share a truck', poolsSub: 'Transport pools', schemes: 'Govt schemes', schemesSub: 'Subsidies & support',
+    retry: 'Try again', loading: 'Loading your farm data...'
+  },
+  hi: {
+    greeting: 'नमस्कार', todayAdvice: 'आपके खेत के लिए आज की सलाह', listen: 'सुनें',
+    weatherSource: 'लाइव मौसम: Open-Meteo', updated: 'अपडेट',
+    myFarm: 'मेरा खेत', crop: 'फसल', stage: 'अवस्था', area: 'क्षेत्र', acres: 'एकड़', soil: 'मिट्टी', water: 'पानी',
+    sowing: 'बुवाई', dayOf: 'लगभग {total} में से दिन {day}', pastDuration: 'बुवाई से {day}वां दिन - फसल की सामान्य अवधि लगभग {total} दिन है, कटाई का समय हो गया।', addSowing: 'फसल के दिन देखने के लिए "मेरा खेत" में बुवाई की तारीख डालें।', editFarm: 'खेत की जानकारी बदलें',
+    mandiTitle: 'आज का मंडी भाव', nearYou: 'आपके सबसे नजदीकी APMC', perQ: '/क्विंटल', reported: 'तारीख',
+    km: 'किमी', mspLabel: 'सरकारी MSP', aboveMsp: 'MSP से ऊपर', belowMsp: 'MSP से नीचे',
+    staleWarn: 'नवीनतम भाव {days} दिन पुराना है। मंडी बंद हो सकती है या भाव अभी दर्ज नहीं हुआ।',
+    snapshotWarn: 'लाइव भाव अभी सिंक नहीं हुए - आखिरी सहेजी गई Agmarknet रिपोर्ट दिखा रहे हैं।',
+    noMandi: 'पिछले 15 दिनों में महाराष्ट्र की किसी मंडी ने {crop} का भाव दर्ज नहीं किया।',
+    mandiSource: 'स्रोत: Agmarknet, भारत सरकार', compareAll: 'सभी मंडियों की तुलना करें',
+    incomeTitle: 'आपकी फसल से अनुमानित आय', incomeSub: '{acres} एकड़ {crop} के लिए अनुमान',
+    yieldLine: 'अनुमानित उपज', priceLine: 'लिया गया भाव', grossLine: 'अनुमानित बिक्री', costLine: 'खेती का खर्च', profitLine: 'अनुमानित मुनाफा', lossLine: 'अनुमानित घाटा',
+    breakEven: 'खर्च निकालने के लिए कम से कम ₹{price}/क्विंटल भाव चाहिए।',
+    priceLive: '{scope} की {n} मंडियों का औसत, {date}', priceMsp: 'सरकारी MSP (हाल का मंडी भाव नहीं मिला)', priceHist: 'लंबी अवधि का औसत (हाल का मंडी भाव नहीं मिला)',
+    costSrc: 'खर्च व उपज का स्रोत', estimateNote: 'यह अनुमान है। असली आय बारिश, कीट और बिक्री के दिन के भाव पर निर्भर करती है।',
+    noIncome: 'इस फसल का खर्च डेटा अभी उपलब्ध नहीं है।', openAdvisor: 'फसल सलाहकार खोलें',
+    trendTitle: 'भाव का रुझान - पिछले 30 दिन', trendSub: 'महाराष्ट्र की मंडियों का औसत मॉडल भाव (₹/क्विंटल)', trendFew: 'अभी पर्याप्त दिनों का भाव डेटा नहीं है।',
+    weatherNow: 'अभी का मौसम', feels: 'महसूस', maxMin: 'आज अधिकतम / न्यूनतम', humidity: 'नमी', rain: 'बारिश की संभावना', wind: 'हवा',
+    todayHours: 'आज', morning: 'सुबह 9 बजे', afternoon: 'दोपहर 3 बजे', evening: 'शाम 6 बजे', night: 'रात 9 बजे',
+    next4: 'अगले 4 दिन', weatherDown: 'लाइव मौसम अभी उपलब्ध नहीं है। कुछ मिनट बाद फिर कोशिश करें।',
+    alerts: 'आपकी फसल के लिए चेतावनी', noAlerts: 'आज आपकी फसल के लिए कोई चेतावनी नहीं।',
+    quick: 'जल्दी पहुंचें', manageFarm: 'अपने खेत का प्रबंधन', scan: 'पत्ती की जांच', scanSub: 'AI से फोटो जांच', ask: 'कृषि मित्र से पूछें', askSub: 'बोलकर या लिखकर', pools: 'ट्रक साझा करें', poolsSub: 'परिवहन समूह', schemes: 'सरकारी योजनाएं', schemesSub: 'सब्सिडी व सहायता',
+    retry: 'फिर कोशिश करें', loading: 'आपके खेत की जानकारी लोड हो रही है...'
+  },
+  mr: {
+    greeting: 'नमस्कार', todayAdvice: 'तुमच्या शेतासाठी आजचा सल्ला', listen: 'ऐका',
+    weatherSource: 'थेट हवामान: Open-Meteo', updated: 'अद्ययावत',
+    myFarm: 'माझे शेत', crop: 'पीक', stage: 'अवस्था', area: 'क्षेत्र', acres: 'एकर', soil: 'माती', water: 'पाणी',
+    sowing: 'पेरणी', dayOf: 'सुमारे {total} पैकी दिवस {day}', pastDuration: 'पेरणीपासून {day} वा दिवस - पिकाचा सामान्य कालावधी सुमारे {total} दिवस, काढणीची वेळ झाली.', addSowing: 'पिकाचे दिवस पाहण्यासाठी "माझे शेत" मध्ये पेरणीची तारीख भरा.', editFarm: 'शेताची माहिती बदला',
+    mandiTitle: 'आजचा बाजारभाव', nearYou: 'तुमच्या जवळच्या बाजार समित्या', perQ: '/क्विंटल', reported: 'दिनांक',
+    km: 'किमी', mspLabel: 'शासकीय हमीभाव (MSP)', aboveMsp: 'हमीभावापेक्षा जास्त', belowMsp: 'हमीभावापेक्षा कमी',
+    staleWarn: 'नवीनतम भाव {days} दिवस जुना आहे. बाजार बंद असू शकतो किंवा भाव अजून नोंदवला नाही.',
+    snapshotWarn: 'थेट भाव अजून सिंक झाले नाहीत - शेवटचा जतन केलेला Agmarknet अहवाल दाखवत आहोत.',
+    noMandi: 'मागील 15 दिवसांत महाराष्ट्रातील कोणत्याही बाजार समितीने {crop} चा भाव नोंदवलेला नाही.',
+    mandiSource: 'स्रोत: Agmarknet, भारत सरकार', compareAll: 'सर्व बाजारांची तुलना करा',
+    incomeTitle: 'तुमच्या पिकातून अपेक्षित उत्पन्न', incomeSub: '{acres} एकर {crop} साठी अंदाज',
+    yieldLine: 'अपेक्षित उत्पादन', priceLine: 'घेतलेला भाव', grossLine: 'अपेक्षित विक्री', costLine: 'लागवड खर्च', profitLine: 'अपेक्षित नफा', lossLine: 'अपेक्षित तोटा',
+    breakEven: 'खर्च भरून काढण्यासाठी किमान ₹{price}/क्विंटल भाव हवा.',
+    priceLive: '{scope} मधील {n} बाजार समित्यांची सरासरी, {date}', priceMsp: 'शासकीय हमीभाव (अलीकडील बाजारभाव उपलब्ध नाही)', priceHist: 'दीर्घकालीन सरासरी (अलीकडील बाजारभाव उपलब्ध नाही)',
+    costSrc: 'खर्च व उत्पादनाचा स्रोत', estimateNote: 'हा अंदाज आहे. खरे उत्पन्न पाऊस, कीड आणि विक्रीच्या दिवशीच्या भावावर अवलंबून असते.',
+    noIncome: 'या पिकाचा खर्चाचा डेटा अजून उपलब्ध नाही.', openAdvisor: 'पीक सल्लागार उघडा',
+    trendTitle: 'भावाचा कल - मागील 30 दिवस', trendSub: 'महाराष्ट्रातील बाजार समित्यांचा सरासरी सर्वसाधारण भाव (₹/क्विंटल)', trendFew: 'अजून पुरेशा दिवसांचे भाव उपलब्ध नाहीत.',
+    weatherNow: 'आत्ताचे हवामान', feels: 'जाणवणारे', maxMin: 'आज कमाल / किमान', humidity: 'आर्द्रता', rain: 'पावसाची शक्यता', wind: 'वारा',
+    todayHours: 'आज', morning: 'सकाळी 9', afternoon: 'दुपारी 3', evening: 'संध्याकाळी 6', night: 'रात्री 9',
+    next4: 'पुढील 4 दिवस', weatherDown: 'थेट हवामान आत्ता उपलब्ध नाही. काही मिनिटांनी पुन्हा प्रयत्न करा.',
+    alerts: 'तुमच्या पिकासाठी इशारे', noAlerts: 'आज तुमच्या पिकासाठी कोणताही इशारा नाही.',
+    quick: 'झटपट सेवा', manageFarm: 'तुमच्या शेताचे व्यवस्थापन', scan: 'पानाची तपासणी', scanSub: 'AI द्वारे फोटो निदान', ask: 'कृषी मित्राला विचारा', askSub: 'बोलून किंवा लिहून', pools: 'ट्रक शेअर करा', poolsSub: 'वाहतूक गट', schemes: 'शासकीय योजना', schemesSub: 'अनुदान व मदत',
+    retry: 'पुन्हा प्रयत्न करा', loading: 'तुमच्या शेताची माहिती लोड होत आहे...'
+  }
+};
 
-// Status badge helper for crop stage and market viability
-function CropStatusIndicator({ label, status = 'ready' }) {
-  const isReady = status === 'ready';
+const LOCALE = { en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN' };
+const fill = (s, p) => s.replace(/\{(\w+)\}/g, (_, k) => (p[k] !== undefined ? p[k] : ''));
+const money = (n) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+
+function formatDate(iso, lang, opts = { day: 'numeric', month: 'short' }) {
+  if (!iso) return '';
+  const d = new Date(`${iso}T12:00:00+05:30`);
+  return isNaN(d) ? iso : d.toLocaleDateString(LOCALE[lang] || 'en-IN', opts);
+}
+
+function weatherIcon(condition = '', isDay = true, size = 22) {
+  const c = condition.toLowerCase();
+  if (c.includes('thunder')) return <CloudRain size={size} color="#7C3AED" />;
+  if (c.includes('rain') || c.includes('drizzle') || c.includes('shower')) return <CloudRain size={size} color="#2563EB" />;
+  if (!isDay) return c.includes('cloud') || c.includes('overcast') ? <CloudMoon size={size} color="#6366F1" /> : <Moon size={size} color="#6366F1" />;
+  if (c.includes('cloud') || c.includes('overcast') || c.includes('fog')) return <CloudSun size={size} color="#059669" />;
+  return <Sun size={size} color="#D97706" />;
+}
+
+const card = {
+  backgroundColor: '#FFFFFF',
+  border: '1px solid #E7E2D6',
+  borderRadius: '14px',
+  padding: '14px 16px',
+  boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+};
+const sectionTitle = { fontSize: '0.98rem', fontWeight: 800, color: '#1B4332', margin: 0 };
+const muted = { fontSize: '0.8rem', color: '#6B7280' };
+const sourceStyle = { fontSize: '0.74rem', color: '#6B7280', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '4px' };
+
+function Stat({ icon, label, value }) {
   return (
-    <span style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '4px',
-      fontSize: '0.72rem',
-      fontWeight: 800,
-      color: isReady ? '#166534' : '#92400E',
-      backgroundColor: isReady ? '#DCFCE7' : '#FEF3C7',
-      padding: '4px 8px',
-      borderRadius: '6px',
-      border: `1px solid ${isReady ? '#BBF7D0' : '#FDE68A'}`
-    }}>
-      <CheckCircle2 size={13} />
-      <span>{label}</span>
+    <div style={{ background: '#F7F5EF', borderRadius: '8px', padding: '6px 8px', minWidth: 0 }}>
+      <div style={{ ...muted, display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.74rem' }}>{icon}{label}</div>
+      <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#1F2937', marginTop: '1px' }}>{value}</div>
+    </div>
+  );
+}
+
+function Chip({ label, value }) {
+  return (
+    <span style={{ background: '#F7F5EF', border: '1px solid #EEE9DD', borderRadius: '999px', padding: '4px 10px', fontSize: '0.78rem' }}>
+      <span style={{ color: '#6B7280' }}>{label}: </span><strong>{value}</strong>
     </span>
   );
 }
 
+function Notice({ children, tone = 'amber' }) {
+  const tones = {
+    amber: { bg: '#FEF3C7', border: '#F59E0B', color: '#92400E' },
+    grey: { bg: '#F3F4F6', border: '#D1D5DB', color: '#374151' }
+  }[tone];
+  return (
+    <div style={{ background: tones.bg, border: `1px solid ${tones.border}`, color: tones.color, borderRadius: '10px', padding: '10px 12px', fontSize: '0.84rem', display: 'flex', gap: '8px', alignItems: 'flex-start', lineHeight: 1.45 }}>
+      <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+      <span>{children}</span>
+    </div>
+  );
+}
+
 export function DashboardPage({ onNavigate, activeProfile, lang = 'en' }) {
-  const t = getTranslation(lang);
-  
-  // Selected city/district for weather and local market
-  const defaultCity = activeProfile?.district || 'Nashik';
-  const [selectedCity, setSelectedCity] = useState(defaultCity);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
-  
-  const [weatherToday, setWeatherToday] = useState(null);
-  const [forecastDays, setForecastDays] = useState([]);
-  const [activeAlerts, setActiveAlerts] = useState([]);
-  const [mandiSnapshot, setMandiSnapshot] = useState(null);
+  const L = TEXT[lang] || TEXT.en;
+  const crop = activeProfile?.currentCrop || 'Tomato';
+  const stage = activeProfile?.cropStage || 'Vegetative Stage';
+  const acres = Number(activeProfile?.landSize) || 2;
+  const [district, setDistrict] = useState(isMaharashtraDistrict(activeProfile?.district) ? activeProfile.district : 'Nashik');
+
+  const [weather, setWeather] = useState(null);
+  const [forecast, setForecast] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [weatherError, setWeatherError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  // Sync with profile if it changes
   useEffect(() => {
-    if (activeProfile?.district && activeProfile.district !== selectedCity) {
-      setSelectedCity(activeProfile.district);
-    }
-  }, [activeProfile]);
+    if (isMaharashtraDistrict(activeProfile?.district)) setDistrict(activeProfile.district);
+  }, [activeProfile?.district]);
 
-  // Load weather and farm data when selectedCity changes
   useEffect(() => {
-    loadCityAndFarmData(selectedCity);
-  }, [selectedCity]);
-
-  const loadCityAndFarmData = async (city) => {
-    setLoading(true);
-    try {
-      const crop = activeProfile?.currentCrop || 'Tomato';
-      const stage = activeProfile?.cropStage || 'Vegetative Stage';
-
-      const [weatherRes, forecastRes, alertsRes, mandiRes] = await Promise.all([
-        api.getTodayWeatherStatus(city, crop, stage),
-        api.getWeatherForecast(city),
-        api.getActiveAlerts(city, crop, stage),
-        api.compareMandis(crop, 25, city)
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setWeatherError(false);
+      const [w, f, a, s] = await Promise.allSettled([
+        api.getTodayWeatherStatus(district, crop, stage),
+        api.getWeatherForecast(district),
+        api.getActiveAlerts(district, crop, stage),
+        api.getDashboardSummary({ district, crop, acres, soil: activeProfile?.soilType || 'Black Soil (Regur)', water: activeProfile?.waterReliability || 'Moderately Reliable' })
       ]);
-
-      setWeatherToday(weatherRes);
-      setForecastDays(Array.isArray(forecastRes) ? forecastRes.slice(1, 5) : []);
-      setActiveAlerts(alertsRes?.alerts || []);
-      setMandiSnapshot(mandiRes);
-    } catch (err) {
-      console.warn('Dashboard data fetch error:', err);
-    } finally {
+      if (cancelled) return;
+      setWeather(w.status === 'fulfilled' && w.value?.current_temp_c != null ? w.value : null);
+      setWeatherError(w.status !== 'fulfilled' || w.value?.current_temp_c == null);
+      setForecast(f.status === 'fulfilled' && Array.isArray(f.value) ? f.value.slice(1, 5) : []);
+      setAlerts(a.status === 'fulfilled' && Array.isArray(a.value) ? a.value : []);
+      setSummary(s.status === 'fulfilled' ? s.value : null);
       setLoading(false);
-    }
-  };
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [district, crop, stage, acres, lang, reloadKey]);
 
-  // Weather icon based on condition AND time of day (day vs night)
-  const getWeatherIcon = (condition = '', isDay = true, size = 26) => {
-    const c = condition.toLowerCase();
-    if (c.includes('rain') || c.includes('drizzle') || c.includes('shower')) {
-      return <CloudRain size={size} color="#2563EB" />;
-    }
-    if (c.includes('thunder')) {
-      return <CloudRain size={size} color="#7C3AED" />;
-    }
-    if (!isDay) {
-      if (c.includes('cloud') || c.includes('overcast')) {
-        return <CloudMoon size={size} color="#6366F1" />;
-      }
-      return <Moon size={size} color="#818CF8" />;
-    }
-    if (c.includes('cloud') || c.includes('overcast')) {
-      return <CloudSun size={size} color="#059669" />;
-    }
-    return <Sun size={size} color="#EAB308" />;
-  };
+  const cropLocal = translateCropName(crop, lang);
+  const today = new Date().toLocaleDateString(LOCALE[lang], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-  // Farmer's main crops (localized)
-  const rawPrimaryCrop = activeProfile?.currentCrop || 'Wheat';
-  const rawSecondaryCrop = rawPrimaryCrop.toLowerCase().includes('rice') ? 'Wheat' : 'Rice';
-  const primaryCropName = translateCropName(rawPrimaryCrop, lang);
-  const secondaryCropName = translateCropName(rawSecondaryCrop, lang);
+  // Days since sowing (only when the farmer has entered a sowing date)
+  let cropDay = null;
+  if (activeProfile?.sowingDate) {
+    const days = Math.floor((Date.now() - new Date(`${activeProfile.sowingDate}T00:00:00+05:30`).getTime()) / 86400000) + 1;
+    if (days > 0) cropDay = days;
+  }
+
+  const mandi = summary?.mandi;
+  const income = summary?.income;
+  const trend = summary?.trend || [];
+
+  const priceSourceText = (() => {
+    if (!income) return '';
+    if (income.priceSource === 'live') {
+      const scope = income.priceScope && income.priceScope !== 'Maharashtra' ? districtLabel(income.priceScope, lang) : (lang === 'en' ? 'Maharashtra' : 'महाराष्ट्र');
+      return fill(L.priceLive, { n: income.priceMarkets, s: income.priceMarkets > 1 && lang === 'en' ? 's' : '', scope, date: formatDate(income.priceAsOf, lang) });
+    }
+    return income.priceSource === 'msp' ? L.priceMsp : L.priceHist;
+  })();
+
+  const quickActions = [
+    { route: 'disease-scan', icon: <ShieldAlert size={20} />, title: L.scan, sub: L.scanSub, color: '#BC4749' },
+    { route: 'ai-agronomist', icon: <Mic size={20} />, title: L.ask, sub: L.askSub, color: '#0F766E' },
+    { route: 'transport-pools', icon: <Truck size={20} />, title: L.pools, sub: L.poolsSub, color: '#386641' },
+    { route: 'schemes', icon: <FileText size={20} />, title: L.schemes, sub: L.schemesSub, color: '#2563EB' }
+  ];
 
   return (
-    <div style={{
-      maxWidth: '1240px',
-      margin: '0 auto',
-      padding: '20px 20px 60px 20px',
-      fontFamily: 'var(--font-ui, "Plus Jakarta Sans", sans-serif)',
-      color: '#1F2937'
-    }}>
-      
-      {/* 1. TOP HEADER: Search + Single City Selector */}
-      <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '14px',
-        marginBottom: '24px'
-      }}>
-        {/* Search Bar matching reference */}
-        <div style={{
-          position: 'relative',
-          flex: '1 1 300px',
-          maxWidth: '520px'
-        }}>
-          <Search 
-            size={18} 
-            color="#9CA3AF" 
-            style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} 
-          />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t.dashboard.searchPlaceholder}
-            style={{
-              width: '100%',
-              padding: '11px 18px 11px 44px',
-              borderRadius: '999px',
-              border: '1.5px solid #E5E7EB',
-              backgroundColor: '#FFFFFF',
-              fontSize: '0.9rem',
-              color: '#1F2937',
-              outline: 'none',
-              transition: 'border-color 0.2s, box-shadow 0.2s',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-            }}
-            onFocus={(e) => e.target.style.borderColor = '#2E7D32'}
-            onBlur={(e) => e.target.style.borderColor = '#E5E7EB'}
-          />
+    <div style={{ maxWidth: '1180px', margin: '0 auto', padding: '14px 16px 40px', color: '#1F2937' }}>
+
+      {/* Greeting + district */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '10px', marginBottom: '12px' }}>
+        <div>
+          <h1 style={{ fontSize: '1.3rem', margin: 0, color: '#1B4332' }}>
+            {L.greeting}, {activeProfile?.fullName?.split(' ')[0] || ''}
+          </h1>
+          <div style={{ ...muted, fontSize: '0.88rem', marginTop: '4px' }}>{today}</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '220px' }}>
+          <MapPin size={18} color="#2E7D32" />
+          <DistrictSelect value={district} onChange={setDistrict} lang={lang} style={{ height: '44px' }} />
+        </div>
+      </div>
+
+      {/* Today's advice (from live weather) */}
+      <div style={{ background: '#1B4332', color: '#F0FFF4', borderRadius: '14px', padding: '12px 16px', marginBottom: '14px', display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ maxWidth: '860px' }}>
+          <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#C8F169', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
+            {L.todayAdvice} · {districtLabel(district, lang)} · {cropLocal}
+          </div>
+          <div style={{ fontSize: '0.95rem', fontWeight: 600, lineHeight: 1.45 }}>
+            {loading ? L.loading : (weather?.farmImpactAdvice || L.weatherDown)}
+          </div>
+          {weather && (
+            <div style={{ fontSize: '0.74rem', color: '#B7E4C7', marginTop: '6px' }}>
+              {L.weatherSource} · {L.updated} {weather.currentTime}
+            </div>
+          )}
+        </div>
+        {weather?.farmImpactAdvice && <AudioSpeaker text={weather.farmImpactAdvice} lang={lang} label={L.listen} />}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', alignItems: 'start' }}>
+
+        {/* LEFT COLUMN */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+          {/* Farm banner with quick actions */}
+          <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+            <div style={{ position: 'relative' }}>
+              <img src="/farm_manage_banner.jpg" alt="" loading="lazy" style={{ width: '100%', height: '150px', objectFit: 'cover', display: 'block' }} />
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(17,32,25,0.75), rgba(17,32,25,0) 60%)' }} />
+              <div style={{ position: 'absolute', left: '14px', bottom: '10px', color: '#FFFFFF', fontWeight: 800, fontSize: '1.05rem' }}>{L.manageFarm}</div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', padding: '10px' }}>
+              {quickActions.map((q) => (
+                <button key={q.route} type="button" onClick={() => onNavigate(q.route)} title={q.sub} style={{ background: '#FFFFFF', border: '1.5px solid #E7E2D6', borderRadius: '10px', padding: '8px 4px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', minHeight: '64px' }}>
+                  <span style={{ color: q.color }}>{q.icon}</span>
+                  <span style={{ fontWeight: 700, fontSize: '0.74rem', color: '#1F2937', textAlign: 'center', lineHeight: 1.2 }}>{q.title}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* My farm */}
+          <div style={card}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h2 style={sectionTitle}><Sprout size={18} style={{ verticalAlign: '-3px', marginRight: '6px' }} />{L.myFarm}</h2>
+              <button type="button" onClick={() => onNavigate('my-farm')} style={{ background: 'none', border: 'none', color: '#2E7D32', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>{L.editFarm}</button>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              <Chip label={L.crop} value={cropLocal} />
+              <Chip label={L.stage} value={translateCropStage(stage, lang)} />
+              <Chip label={L.area} value={`${acres} ${L.acres}`} />
+              <Chip label={L.soil} value={translateSoilType(activeProfile?.soilType || 'Black Soil (Regur)', lang)} />
+              <Chip label={L.water} value={translateWaterReliability(activeProfile?.waterReliability || 'Moderately Reliable', lang)} />
+              {activeProfile?.sowingDate && <Chip label={L.sowing} value={formatDate(activeProfile.sowingDate, lang)} />}
+            </div>
+            <div style={{ marginTop: '10px', fontSize: '0.84rem' }}>
+              {cropDay
+                ? <span style={{ fontWeight: 700, color: '#1B4332' }}><CalendarDays size={15} style={{ verticalAlign: '-2px', marginRight: '4px' }} />{fill(summary?.crop?.durationDays && cropDay > summary.crop.durationDays ? L.pastDuration : L.dayOf, { day: cropDay, total: summary?.crop?.durationDays || '?' })}</span>
+                : <span style={muted}>{L.addSowing}</span>}
+            </div>
+          </div>
+
+          {/* Mandi rate */}
+          <div style={card}>
+            <h2 style={sectionTitle}><ShoppingBag size={18} style={{ verticalAlign: '-3px', marginRight: '6px' }} />{L.mandiTitle} · {cropLocal}</h2>
+            <div style={{ ...muted, margin: '2px 0 8px' }}>{L.nearYou}</div>
+            {loading ? (
+              <div style={{ height: '120px', background: '#F3F4F6', borderRadius: '10px' }} />
+            ) : mandi && mandi.nearest.length > 0 ? (
+              <>
+                {mandi.isSnapshot && <div style={{ marginBottom: '10px' }}><Notice>{L.snapshotWarn}</Notice></div>}
+                {!mandi.isSnapshot && mandi.daysSinceLatest > 2 && <div style={{ marginBottom: '10px' }}><Notice>{fill(L.staleWarn, { days: mandi.daysSinceLatest })}</Notice></div>}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {mandi.nearest.map((m) => (
+                    <div key={m.mandiId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '8px 10px', border: '1px solid #EEE9DD', borderRadius: '10px' }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>{m.mandiName}</div>
+                        <div style={muted}>{districtLabel(m.district, lang)} · ~{m.distanceKm} {L.km} · {L.reported} {formatDate(m.priceDate, lang)}</div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#1B4332' }}>{money(m.quotedModalPriceQuintal)}<span style={{ ...muted, fontWeight: 500 }}>{L.perQ}</span></div>
+                        <div style={muted}>{money(m.priceRange.min)} – {money(m.priceRange.max)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {mandi.msp && (
+                  <div style={{ marginTop: '10px', fontSize: '0.84rem' }}>
+                    {L.mspLabel}: <strong>{money(mandi.msp)}{L.perQ}</strong>
+                    {' · '}
+                    <span style={{ fontWeight: 700, color: mandi.nearest[0].quotedModalPriceQuintal >= mandi.msp ? '#166534' : '#B91C1C' }}>
+                      {mandi.nearest[0].quotedModalPriceQuintal >= mandi.msp ? L.aboveMsp : L.belowMsp}
+                    </span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <Notice tone="grey">{fill(L.noMandi, { crop: cropLocal })}</Notice>
+            )}
+            <div style={sourceStyle}><Info size={13} />{L.mandiSource}</div>
+            <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: '12px' }} onClick={() => onNavigate('smart-mandi')}>
+              {L.compareAll} <ArrowRight size={14} />
+            </button>
+          </div>
+
+          {/* Expected income: plain arithmetic the farmer can check */}
+          <div style={card}>
+            <h2 style={sectionTitle}>{L.incomeTitle}</h2>
+            <div style={{ ...muted, margin: '2px 0 8px' }}>{fill(L.incomeSub, { acres, crop: cropLocal })}</div>
+            {loading ? (
+              <div style={{ height: '140px', background: '#F3F4F6', borderRadius: '10px' }} />
+            ) : income ? (
+              <>
+                <div style={{ fontSize: '0.86rem', display: 'grid', gap: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>{L.yieldLine}</span><strong>{Math.round(income.totalYieldQuintal * 10) / 10} q</strong></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                    <span>{L.priceLine}<div style={{ ...muted, fontSize: '0.72rem' }}>{priceSourceText}</div></span>
+                    <strong style={{ whiteSpace: 'nowrap' }}>× {money(income.pricePerQuintal)}{L.perQ}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #D6D0C2', paddingTop: '8px' }}><span>{L.grossLine}</span><strong>{money(income.grossIncome)}</strong></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#B91C1C' }}><span>{L.costLine}</span><strong>− {money(income.totalCost)}</strong></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1.5px solid #1B4332', paddingTop: '8px', fontSize: '1.05rem' }}>
+                    <span style={{ fontWeight: 800 }}>{income.netProfit >= 0 ? L.profitLine : L.lossLine}</span>
+                    <strong style={{ color: income.netProfit >= 0 ? '#166534' : '#B91C1C' }}>{money(Math.abs(income.netProfit))}</strong>
+                  </div>
+                </div>
+                {income.breakEvenPrice > 0 && <div style={{ ...muted, marginTop: '8px' }}>{fill(L.breakEven, { price: Math.round(income.breakEvenPrice).toLocaleString('en-IN') })}</div>}
+                {income.costSource && <div style={sourceStyle}><Info size={13} />{L.costSrc}: {income.costSource}{income.costYear ? ` (${income.costYear})` : ''}</div>}
+                <div style={{ ...muted, marginTop: '8px', fontStyle: 'italic' }}>{L.estimateNote}</div>
+              </>
+            ) : (
+              <Notice tone="grey">{L.noIncome}</Notice>
+            )}
+            <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: '12px' }} onClick={() => onNavigate('crop-advisor')}>
+              {L.openAdvisor} <ArrowRight size={14} />
+            </button>
+          </div>
+
         </div>
 
-        {/* Right side: City / District Selector for Accurate Weather */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ position: 'relative' }}>
-            <button
-              type="button"
-              onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '9px 16px',
-                backgroundColor: '#FFFFFF',
-                border: '1.5px solid #E5E7EB',
-                borderRadius: '999px',
-                fontSize: '0.88rem',
-                fontWeight: 700,
-                color: '#1B4332',
-                cursor: 'pointer',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-              }}
-            >
-              <MapPin size={16} color="#2E7D32" />
-              <span>{selectedCity}</span>
-              <ChevronDown size={14} color="#6B7280" />
-            </button>
+        {/* RIGHT COLUMN */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-            {isCityDropdownOpen && (
-              <div style={{
-                position: 'absolute',
-                right: 0,
-                top: 'calc(100% + 8px)',
-                width: '260px',
-                maxHeight: '300px',
-                overflowY: 'auto',
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #E5E7EB',
-                borderRadius: '16px',
-                boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-                zIndex: 50,
-                padding: '8px'
-              }}>
-                <div style={{ padding: '6px 10px', fontSize: '0.72rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' }}>
-                  {t.dashboard.selectCityPrompt}
+          {/* Weather now */}
+          <div style={{ ...card, background: '#F1F8F2', borderColor: '#CFE6D4' }}>
+            <h2 style={sectionTitle}>{L.weatherNow} · {districtLabel(district, lang)}</h2>
+            {loading ? (
+              <div style={{ height: '180px', background: '#E5EFE7', borderRadius: '10px', marginTop: '12px' }} />
+            ) : weather ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '8px 0' }}>
+                  {weatherIcon(weather.condition, weather.is_day, 32)}
+                  <div>
+                    <div style={{ fontSize: '1.9rem', fontWeight: 800, lineHeight: 1, color: '#1B4332' }}>{Math.round(weather.current_temp_c)}°C</div>
+                    <div style={{ fontWeight: 600 }}>{translateWeatherCondition(weather.condition, lang)}</div>
+                    <div style={muted}>{L.feels} {Math.round(weather.feels_like_c)}°C · {weather.timePeriodLabel}</div>
+                  </div>
                 </div>
-                {POPULAR_DISTRICTS.map((city) => (
-                  <button
-                    key={city}
-                    type="button"
-                    onClick={() => {
-                      setSelectedCity(city);
-                      setIsCityDropdownOpen(false);
-                    }}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      backgroundColor: selectedCity === city ? '#EAF7EC' : 'transparent',
-                      color: selectedCity === city ? '#1B4332' : '#374151',
-                      fontWeight: selectedCity === city ? 700 : 500,
-                      fontSize: '0.86rem',
-                      cursor: 'pointer',
-                      textAlign: 'left'
-                    }}
-                  >
-                    <span>{city}</span>
-                    {selectedCity === city && <Check size={14} color="#2E7D32" />}
-                  </button>
-                ))}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                  <Stat icon={<Thermometer size={13} />} label={L.maxMin} value={`${weather.temp_max_c}° / ${weather.temp_min_c}°`} />
+                  <Stat icon={<Umbrella size={13} />} label={L.rain} value={`${weather.rainfall_prob_percent}%`} />
+                  <Stat icon={<Droplets size={13} />} label={L.humidity} value={`${weather.humidity_percent}%`} />
+                  <Stat icon={<Wind size={13} />} label={L.wind} value={`${weather.wind_speed_kmh} km/h`} />
+                </div>
+                {weather.todaySlots && (
+                  <div style={{ marginTop: '10px' }}>
+                    <div style={{ ...muted, fontWeight: 700, marginBottom: '4px' }}>{L.todayHours}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                      {['morning', 'afternoon', 'evening', 'night'].map((slot) => {
+                        const s = weather.todaySlots[slot];
+                        return (
+                          <div key={slot} style={{ background: '#FFFFFF', border: '1px solid #DCEBDF', borderRadius: '10px', padding: '8px 4px', textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.7rem', color: '#4B5563', fontWeight: 600 }}>{L[slot]}</div>
+                            <div style={{ margin: '4px 0' }}>{weatherIcon(s?.condition || '', slot !== 'night', 18)}</div>
+                            <div style={{ fontWeight: 800 }}>{s?.temp_c != null ? `${s.temp_c}°` : '–'}</div>
+                            {s?.rain_prob != null && <div style={{ fontSize: '0.68rem', color: '#2563EB' }}>{s.rain_prob}%</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                <div style={sourceStyle}><Info size={13} />{L.weatherSource} · {L.updated} {weather.currentTime}</div>
+              </>
+            ) : (
+              <div style={{ marginTop: '12px' }}>
+                <Notice>{L.weatherDown}</Notice>
+                <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: '10px' }} onClick={() => setReloadKey((k) => k + 1)}>
+                  <RefreshCw size={14} /> {L.retry}
+                </button>
               </div>
             )}
           </div>
+
+          {/* Next 4 days */}
+          {forecast.length > 0 && (
+            <div style={card}>
+              <h2 style={sectionTitle}>{L.next4}</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginTop: '8px' }}>
+                {forecast.map((d) => (
+                  <div key={d.record_date} title={translateWeatherCondition(d.condition, lang)} style={{ border: '1px solid #EEE9DD', borderRadius: '10px', padding: '6px 4px', textAlign: 'center' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.72rem' }}>{formatDate(d.record_date, lang, { weekday: 'short', day: 'numeric' })}</div>
+                    <div style={{ margin: '3px 0' }}>{weatherIcon(d.condition, true, 18)}</div>
+                    <div style={{ fontWeight: 800, fontSize: '0.84rem' }}>{d.temp_max_c}°<span style={{ ...muted, fontWeight: 500 }}>/{d.temp_min_c}°</span></div>
+                    <div style={{ fontSize: '0.68rem', color: '#2563EB' }}>{d.rainfall_prob_percent}%</div>
+                  </div>
+                ))}
+              </div>
+              <div style={sourceStyle}><Info size={13} />{L.weatherSource}</div>
+            </div>
+          )}
+
+          {/* Alerts */}
+          <div style={card}>
+            <h2 style={sectionTitle}><AlertTriangle size={18} style={{ verticalAlign: '-3px', marginRight: '6px' }} />{L.alerts}</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+              {alerts.length === 0 ? (
+                <div style={muted}>{L.noAlerts}</div>
+              ) : alerts.map((a) => (
+                <div key={a.id} style={{ borderLeft: `4px solid ${a.severity === 'Critical' ? '#BC4749' : a.severity === 'Warning' ? '#F59E0B' : '#386641'}`, background: '#FAFAF7', borderRadius: '8px', padding: '10px 12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                    <strong style={{ fontSize: '0.92rem' }}>{a.title}</strong>
+                    <span className="badge badge-wheat" style={{ flexShrink: 0 }}>{a.severityLabel}</span>
+                  </div>
+                  <div style={{ ...muted, margin: '4px 0 6px' }}>{a.conditionSummary}</div>
+                  <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.84rem', lineHeight: 1.5 }}>
+                    {a.actionSteps.map((step, i) => <li key={i}>{step}</li>)}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
       </div>
-
-      {/* 2. TOP ACTIONABLE FARM ADVISORY BANNER (HIGH PRIORITY FOR FARMER) */}
-      <div style={{
-        backgroundColor: '#1B4332',
-        color: '#FFFFFF',
-        borderRadius: '16px',
-        padding: '20px 24px',
-        marginBottom: '24px',
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '16px',
-        boxShadow: '0 4px 16px rgba(27, 67, 50, 0.12)',
-        border: '1.5px solid #2E7D32'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', maxWidth: '820px' }}>
-          <div style={{
-            backgroundColor: '#2E7D32',
-            color: '#C8F169',
-            padding: '10px',
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0
-          }}>
-            <Sparkles size={24} />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span style={{
-                fontSize: '0.72rem',
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-                backgroundColor: '#C8F169',
-                color: '#1B4332',
-                padding: '2px 8px',
-                borderRadius: '4px'
-              }}>
-                {t.dashboard.todayAdvisoryTitle || "आजचे शेती नियोजन"}
-              </span>
-              <span style={{ fontSize: '0.8rem', color: '#D8F3DC', fontWeight: 600 }}>
-                📍 {selectedCity} · {activeProfile?.currentCrop || 'Tomato'}
-              </span>
-            </div>
-            <p style={{
-              fontSize: '0.98rem',
-              fontWeight: 600,
-              lineHeight: 1.45,
-              margin: 0,
-              color: '#F0FFF4'
-            }}>
-              {weatherToday?.farmImpactAdvice || (
-                lang === 'mr' 
-                  ? "हवामान कोरडे असून दुपारच्या वेळी सिंचन देणे टाळावे. संध्याकाळी किडींच्या प्रतिबंधासाठी निंबोळी अर्क फवारणी योग्य राहील."
-                  : lang === 'hi'
-                  ? "मौसम अनुकूल है, दोपहर में तेज धूप में सिंचाई न करें। शाम को जैविक कीटनाशक का छिड़काव करें।"
-                  : "Weather is favorable today. Avoid irrigation during peak midday heat; schedule pest-monitoring for early evening."
-              )}
-            </p>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <AudioSpeaker
-            text={`${t.dashboard.todayAdvisoryTitle}. ${selectedCity}. ${weatherToday?.farmImpactAdvice || ''}`}
-            lang={lang}
-            label={lang === 'mr' ? 'सल्ला ऐका' : lang === 'hi' ? 'सलाह सुनें' : 'Listen'}
-          />
-        </div>
-      </div>
-
-      {/* 3. MAIN 2-COLUMN GRID */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-        gap: '24px',
-        alignItems: 'start'
-      }}>
-        
-        {/* LEFT COLUMN: Summary + Manage your farm + Predictive analysis */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minWidth: '0' }}>
-          
-          {/* SECTION A: SUMMARY (Wheat & Rice Cards with Non-SaaS Clear Metrics) */}
-          <div>
-            <h2 style={{
-              fontSize: '1.15rem',
-              fontWeight: 700,
-              color: '#1B4332',
-              marginBottom: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <span>{t.dashboard.summary}</span>
-            </h2>
-
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '16px'
-            }}>
-              {/* Card 1: Primary Crop */}
-              <div style={{
-                backgroundColor: '#FFFFFF',
-                borderRadius: '16px',
-                padding: '18px 20px',
-                border: '1.5px solid #E5E7EB',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                  <div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1B4332', marginBottom: '2px' }}>
-                      {primaryCropName}
-                    </div>
-                    <div style={{ fontSize: '0.76rem', color: '#6B7280', fontWeight: 500 }}>
-                      {t.dashboard.totalProduction}
-                    </div>
-                  </div>
-                  <CropStatusIndicator label={t.dashboard.readyToSell || 'काढणीस सज्ज'} status="ready" />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '6px' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px' }}>
-                    <span style={{ fontSize: '1.85rem', fontWeight: 800, color: '#1B4332', letterSpacing: '-0.02em' }}>
-                      125
-                    </span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#4B5563' }}>
-                      {t.dashboard.tons}
-                    </span>
-                  </div>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#2E7D32' }}>
-                    ★ {t.dashboard.demandHigh || 'उत्तम मागणी'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Card 2: Secondary Crop */}
-              <div style={{
-                backgroundColor: '#FFFFFF',
-                borderRadius: '16px',
-                padding: '18px 20px',
-                border: '1.5px solid #E5E7EB',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                  <div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1B4332', marginBottom: '2px' }}>
-                      {secondaryCropName}
-                    </div>
-                    <div style={{ fontSize: '0.76rem', color: '#6B7280', fontWeight: 500 }}>
-                      {t.dashboard.totalProduction}
-                    </div>
-                  </div>
-                  <CropStatusIndicator label={t.dashboard.plotProgress} status="growing" />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '6px' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px' }}>
-                    <span style={{ fontSize: '1.85rem', fontWeight: 800, color: '#1B4332', letterSpacing: '-0.02em' }}>
-                      980
-                    </span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#4B5563' }}>
-                      {t.dashboard.tons}
-                    </span>
-                  </div>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#2E7D32' }}>
-                    ★ {t.dashboard.demandHigh || 'चांगली वाढ'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION B: MANAGE YOUR FARM (Landscape Centerpiece + 3 Solid 48px Action Cards) */}
-          <div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '14px'
-            }}>
-              <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#1B4332' }}>
-                {t.dashboard.manageFarm}
-              </h2>
-              <span style={{ fontSize: '0.78rem', color: '#2E7D32', fontWeight: 600 }}>
-                {t.dashboard.plotProgress}
-              </span>
-            </div>
-
-            {/* Farm Illustration Banner */}
-            <div style={{
-              borderRadius: '16px',
-              overflow: 'hidden',
-              boxShadow: '0 4px 14px rgba(27, 67, 50, 0.08)',
-              border: '1.5px solid #E5E7EB',
-              backgroundColor: '#E7F2DF',
-              marginBottom: '14px'
-            }}>
-              <img
-                src="/farm_manage_banner.jpg"
-                alt="Manage your farm illustration"
-                style={{
-                  width: '100%',
-                  height: '190px',
-                  objectFit: 'cover',
-                  display: 'block'
-                }}
-              />
-            </div>
-
-            {/* 3 Large Solid 48px Action Cards (No blurry image overlays) */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-              gap: '12px'
-            }}>
-              {/* Action Card 1: Disease Scan */}
-              <div
-                onClick={() => onNavigate('disease-scan')}
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: '14px',
-                  padding: '16px',
-                  border: '1.5px solid #E5E7EB',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  minHeight: '140px'
-                }}
-              >
-                <div>
-                  <div style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
-                    backgroundColor: '#FEF2F2',
-                    color: '#DC2626',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: '10px'
-                  }}>
-                    <ShieldAlert size={20} />
-                  </div>
-                  <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1B4332', marginBottom: '4px' }}>
-                    {t.dashboard.actionCardDiseaseTitle || t.dashboard.scanLeafDisease}
-                  </div>
-                  <div style={{ fontSize: '0.76rem', color: '#6B7280', lineHeight: 1.35 }}>
-                    {t.dashboard.actionCardDiseaseDesc || "पानाचा फोटो काढून रोग तपासा"}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  style={{
-                    minHeight: '44px',
-                    width: '100%',
-                    marginTop: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    borderRadius: '8px',
-                    backgroundColor: '#1B4332',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    fontWeight: 700,
-                    fontSize: '0.82rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <span>{t.dashboard.scanLeafDisease}</span>
-                  <ArrowRight size={14} />
-                </button>
-              </div>
-
-              {/* Action Card 2: Crop Advisor */}
-              <div
-                onClick={() => onNavigate('crop-advisor')}
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: '14px',
-                  padding: '16px',
-                  border: '1.5px solid #E5E7EB',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  minHeight: '140px'
-                }}
-              >
-                <div>
-                  <div style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
-                    backgroundColor: '#F0FDF4',
-                    color: '#16A34A',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: '10px'
-                  }}>
-                    <Sprout size={20} />
-                  </div>
-                  <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1B4332', marginBottom: '4px' }}>
-                    {t.dashboard.actionCardRoiTitle || t.dashboard.cropAdvisorRoi}
-                  </div>
-                  <div style={{ fontSize: '0.76rem', color: '#6B7280', lineHeight: 1.35 }}>
-                    {t.dashboard.actionCardRoiDesc || "माती व हंगामानुसार नफा देणारे पीक निवडा"}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  style={{
-                    minHeight: '44px',
-                    width: '100%',
-                    marginTop: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    borderRadius: '8px',
-                    backgroundColor: '#2E7D32',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    fontWeight: 700,
-                    fontSize: '0.82rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <span>{t.dashboard.cropAdvisorRoi}</span>
-                  <ArrowRight size={14} />
-                </button>
-              </div>
-
-              {/* Action Card 3: Smart Mandi */}
-              <div
-                onClick={() => onNavigate('smart-mandi')}
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: '14px',
-                  padding: '16px',
-                  border: '1.5px solid #E5E7EB',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  minHeight: '140px'
-                }}
-              >
-                <div>
-                  <div style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
-                    backgroundColor: '#FFFBEB',
-                    color: '#D97706',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: '10px'
-                  }}>
-                    <ShoppingBag size={20} />
-                  </div>
-                  <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1B4332', marginBottom: '4px' }}>
-                    {t.dashboard.actionCardMandiTitle || t.dashboard.compareMandis}
-                  </div>
-                  <div style={{ fontSize: '0.76rem', color: '#6B7280', lineHeight: 1.35 }}>
-                    {t.dashboard.actionCardMandiDesc || "वाहतूक खर्च वजा जाता खरा नफा तपासा"}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  style={{
-                    minHeight: '44px',
-                    width: '100%',
-                    marginTop: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    borderRadius: '8px',
-                    backgroundColor: '#D97706',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    fontWeight: 700,
-                    fontSize: '0.82rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <span>{t.dashboard.compareMandis}</span>
-                  <ArrowRight size={14} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION C: PREDICTIVE ANALYSIS (3 Month Horizon Cards) */}
-          <div>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#1B4332', marginBottom: '14px' }}>
-              {t.dashboard.predictiveAnalysis}
-            </h2>
-
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-              gap: '14px'
-            }}>
-              {/* Month 1: September '26 */}
-              <div style={{
-                backgroundColor: '#FFFFFF',
-                borderRadius: '18px',
-                padding: '18px',
-                border: '1.5px solid #F0F2EE',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
-              }}>
-                <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1B4332', marginBottom: '14px', textAlign: 'center' }}>
-                  {translateMonthName('September', lang)} '26
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>
-                      <span style={{ color: '#4B5563' }}>{translateCropName('Wheat', lang)}</span>
-                      <span style={{ color: '#1B4332', fontWeight: 800 }}>59%</span>
-                    </div>
-                    <div style={{ width: '100%', height: '5px', backgroundColor: '#EEF2EB', borderRadius: '3px' }}>
-                      <div style={{ width: '59%', height: '100%', backgroundColor: '#2E7D32', borderRadius: '3px' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>
-                      <span style={{ color: '#4B5563' }}>{translateCropName('Rice', lang)}</span>
-                      <span style={{ color: '#1B4332', fontWeight: 800 }}>81%</span>
-                    </div>
-                    <div style={{ width: '100%', height: '5px', backgroundColor: '#EEF2EB', borderRadius: '3px' }}>
-                      <div style={{ width: '81%', height: '100%', backgroundColor: '#8BC34A', borderRadius: '3px' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>
-                      <span style={{ color: '#4B5563' }}>{translateCropName('Maize', lang)}</span>
-                      <span style={{ color: '#1B4332', fontWeight: 800 }}>13%</span>
-                    </div>
-                    <div style={{ width: '100%', height: '5px', backgroundColor: '#EEF2EB', borderRadius: '3px' }}>
-                      <div style={{ width: '13%', height: '100%', backgroundColor: '#F59E0B', borderRadius: '3px' }} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Month 2: October '26 */}
-              <div style={{
-                backgroundColor: '#FFFFFF',
-                borderRadius: '18px',
-                padding: '18px',
-                border: '1.5px solid #F0F2EE',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
-              }}>
-                <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1B4332', marginBottom: '14px', textAlign: 'center' }}>
-                  {translateMonthName('October', lang)} '26
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>
-                      <span style={{ color: '#4B5563' }}>{translateCropName('Wheat', lang)}</span>
-                      <span style={{ color: '#1B4332', fontWeight: 800 }}>74%</span>
-                    </div>
-                    <div style={{ width: '100%', height: '5px', backgroundColor: '#EEF2EB', borderRadius: '3px' }}>
-                      <div style={{ width: '74%', height: '100%', backgroundColor: '#2E7D32', borderRadius: '3px' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>
-                      <span style={{ color: '#4B5563' }}>{translateCropName('Rice', lang)}</span>
-                      <span style={{ color: '#1B4332', fontWeight: 800 }}>92%</span>
-                    </div>
-                    <div style={{ width: '100%', height: '5px', backgroundColor: '#EEF2EB', borderRadius: '3px' }}>
-                      <div style={{ width: '92%', height: '100%', backgroundColor: '#8BC34A', borderRadius: '3px' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>
-                      <span style={{ color: '#4B5563' }}>{translateCropName('Maize', lang)}</span>
-                      <span style={{ color: '#1B4332', fontWeight: 800 }}>25%</span>
-                    </div>
-                    <div style={{ width: '100%', height: '5px', backgroundColor: '#EEF2EB', borderRadius: '3px' }}>
-                      <div style={{ width: '25%', height: '100%', backgroundColor: '#F59E0B', borderRadius: '3px' }} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Month 3: November '26 */}
-              <div style={{
-                backgroundColor: '#FFFFFF',
-                borderRadius: '18px',
-                padding: '18px',
-                border: '1.5px solid #F0F2EE',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
-              }}>
-                <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1B4332', marginBottom: '14px', textAlign: 'center' }}>
-                  {translateMonthName('November', lang)} '26
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>
-                      <span style={{ color: '#4B5563' }}>{translateCropName('Wheat', lang)}</span>
-                      <span style={{ color: '#1B4332', fontWeight: 800 }}>88%</span>
-                    </div>
-                    <div style={{ width: '100%', height: '5px', backgroundColor: '#EEF2EB', borderRadius: '3px' }}>
-                      <div style={{ width: '88%', height: '100%', backgroundColor: '#2E7D32', borderRadius: '3px' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>
-                      <span style={{ color: '#4B5563' }}>{translateCropName('Rice', lang)}</span>
-                      <span style={{ color: '#1B4332', fontWeight: 800 }}>98%</span>
-                    </div>
-                    <div style={{ width: '100%', height: '5px', backgroundColor: '#EEF2EB', borderRadius: '3px' }}>
-                      <div style={{ width: '98%', height: '100%', backgroundColor: '#8BC34A', borderRadius: '3px' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>
-                      <span style={{ color: '#4B5563' }}>{translateCropName('Maize', lang)}</span>
-                      <span style={{ color: '#1B4332', fontWeight: 800 }}>45%</span>
-                    </div>
-                    <div style={{ width: '100%', height: '5px', backgroundColor: '#EEF2EB', borderRadius: '3px' }}>
-                      <div style={{ width: '45%', height: '100%', backgroundColor: '#F59E0B', borderRadius: '3px' }} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        {/* RIGHT COLUMN: Weather forecast (Accurate with Live Time & 24h Diurnal Curve) + Harvesting Cost */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '22px', minWidth: '0' }}>
-          
-          {/* SECTION D: WEATHER FORECAST */}
-          <div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '14px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#1B4332' }}>
-                  {t.dashboard.weatherForecast}
-                </h2>
-                <span style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  padding: '2px 8px',
-                  borderRadius: '999px',
-                  backgroundColor: '#EAF7EC',
-                  color: '#2E7D32'
-                }}>
-                  {selectedCity}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => onNavigate('weather-alerts')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#2563EB',
-                  fontSize: '0.82rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textDecoration: 'underline'
-                }}
-              >
-                {t.dashboard.openApp}
-              </button>
-            </div>
-
-            {/* HERO TIME-ACCURATE WEATHER CARD (Mint Green matching reference) */}
-            <div style={{
-              backgroundColor: '#DDF4E4',
-              borderRadius: '24px',
-              padding: '20px 22px',
-              marginBottom: '14px',
-              border: '1.5px solid #CBEBD4',
-              boxShadow: '0 2px 10px rgba(46, 125, 50, 0.06)'
-            }}>
-              {/* Header: Weather icon, Today badge, and Time badge */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  {getWeatherIcon(weatherToday?.condition || 'Rainy', weatherToday?.is_day ?? true, 28)}
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{
-                        fontSize: '0.72rem',
-                        fontWeight: 800,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        backgroundColor: 'rgba(255, 255, 255, 0.85)',
-                        padding: '2px 8px',
-                        borderRadius: '6px',
-                        color: '#1B4332'
-                      }}>
-                        {t.dashboard.today}
-                      </span>
-                      {weatherToday?.timePeriod && (
-                        <span style={{
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          backgroundColor: weatherToday.is_day ? '#FEF3C7' : '#E0E7FF',
-                          color: weatherToday.is_day ? '#92400E' : '#3730A3',
-                          padding: '2px 8px',
-                          borderRadius: '6px'
-                        }}>
-                          {lang === 'hi' ? (weatherToday.is_day ? 'दिन का समय' : 'रात का समय') :
-                           lang === 'mr' ? (weatherToday.is_day ? 'दिवसाची वेळ' : 'रात्रीची वेळ') :
-                           weatherToday.timePeriod}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '0.78rem', color: '#2D5F3E', fontWeight: 600, marginTop: '3px' }}>
-                      {translateFullDate(weatherToday?.fullDateStr || 'Monday, 21 September 2026', lang)}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{
-                    padding: '8px',
-                    borderRadius: '12px',
-                    backgroundColor: 'rgba(255,255,255,0.7)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <Thermometer size={20} color="#E05638" />
-                  </div>
-                  <AudioSpeaker 
-                    text={`${selectedCity} ${t.dashboard.weatherForecast}. ${weatherToday?.current_temp_c || 22}°C. ${translateWeatherCondition(weatherToday?.condition, lang)}. ${weatherToday?.farmImpactAdvice || ''}`}
-                    lang={lang}
-                    label=""
-                  />
-                </div>
-              </div>
-
-              {/* Real-Time Live Temperature Display */}
-              <div style={{ marginTop: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                  <span style={{ fontSize: '2.6rem', fontWeight: 800, color: '#1B4332', lineHeight: 1, letterSpacing: '-0.02em' }}>
-                    {weatherToday?.current_temp_c != null ? `${weatherToday.current_temp_c}°` : '22.4°'}
-                  </span>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#2D5F3E' }}>
-                      {t.dashboard.liveAt} {weatherToday?.currentTime || ''}
-                    </span>
-                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#4A6B53' }}>
-                      {t.dashboard.maxMin}: {weatherToday?.temp_max_c || 30}° / {weatherToday?.temp_min_c || 22}°
-                    </span>
-                  </div>
-                  <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1B4332' }}>
-                      {translateWeatherCondition(weatherToday?.condition || 'Overcast Night', lang)}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#3A6B4E', fontWeight: 600 }}>
-                      RH: {weatherToday?.humidity_percent || 90}% · {weatherToday?.rainfall_prob_percent || 20}%
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 4-Period Daytime / Nighttime Progression (Clear for Rural Users) */}
-              {weatherToday?.hourlyProgression && weatherToday.hourlyProgression.length > 0 && (
-                <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid rgba(46, 125, 50, 0.15)' }}>
-                  <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#2E5B3A', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    {t.dashboard.twentyFourHourCycle}
-                  </div>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
-                    gap: '6px'
-                  }}>
-                    {[
-                      { label: t.dashboard.morning || 'सकाळ', time: '06:00 - 12:00', temp: '24°', icon: <Sun size={15} color="#EAB308" />, isCur: weatherToday.timePeriod === 'Morning' },
-                      { label: t.dashboard.afternoon || 'दुपार', time: '12:00 - 17:00', temp: `${weatherToday.temp_max_c || 30}°`, icon: <Sun size={15} color="#F97316" />, isCur: weatherToday.timePeriod === 'Afternoon' },
-                      { label: t.dashboard.evening || 'संध्याकाळ', time: '17:00 - 20:00', temp: '26°', icon: <CloudSun size={15} color="#059669" />, isCur: weatherToday.timePeriod === 'Evening' },
-                      { label: t.dashboard.night || 'रात्र', time: '20:00 - 06:00', temp: `${weatherToday.temp_min_c || 22}°`, icon: <Moon size={15} color="#6366F1" />, isCur: weatherToday.timePeriod === 'Night' }
-                    ].map((slot, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          backgroundColor: slot.isCur ? '#1B4332' : 'rgba(255,255,255,0.75)',
-                          color: slot.isCur ? '#FFFFFF' : '#1F2937',
-                          borderRadius: '10px',
-                          padding: '8px 4px',
-                          textAlign: 'center',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: '2px',
-                          border: slot.isCur ? '1.5px solid #C8F169' : '1px solid rgba(46,125,50,0.15)',
-                          boxShadow: slot.isCur ? '0 2px 8px rgba(27,67,50,0.25)' : 'none'
-                        }}
-                      >
-                        <span style={{ fontSize: '0.72rem', fontWeight: 800 }}>
-                          {slot.label}
-                        </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                          {slot.icon}
-                          <span style={{ fontSize: '0.92rem', fontWeight: 900 }}>
-                            {slot.temp}
-                          </span>
-                        </div>
-                        {slot.isCur && (
-                          <span style={{
-                            fontSize: '0.6rem',
-                            fontWeight: 800,
-                            backgroundColor: '#C8F169',
-                            color: '#1B4332',
-                            padding: '1px 5px',
-                            borderRadius: '3px',
-                            marginTop: '2px'
-                          }}>
-                            {t.dashboard.now}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Farmer Microclimate Tip */}
-              <div style={{
-                marginTop: '12px',
-                paddingTop: '10px',
-                borderTop: '1px solid rgba(46, 125, 50, 0.15)',
-                fontSize: '0.8rem',
-                color: '#285437',
-                lineHeight: 1.4
-              }}>
-                📍 <strong>{selectedCity} {t.dashboard.advisoryPrefix}:</strong> {weatherToday?.farmImpactAdvice || ''}
-              </div>
-            </div>
-
-            {/* 4-DAY FORECAST GRID (2x2 Grid) */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '12px',
-              marginBottom: '20px'
-            }}>
-              {forecastDays.length > 0 ? (
-                forecastDays.map((day, idx) => {
-                  const parts = (day.formattedDate || `${22 + idx} Sep`).split(' ');
-                  const dayNum = parts[0];
-                  const monthStr = parts[1] || 'Sep';
-                  const localizedDayName = translateDayName(day.shortDay || 'Day', lang);
-                  const localizedMonth = translateMonthName(monthStr, lang);
-
-                  return (
-                    <div
-                      key={day.id || idx}
-                      style={{
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: '14px',
-                        padding: '14px',
-                        border: '1.5px solid #F0F2EE',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '4px'
-                      }}
-                    >
-                      {/* Date & Day prominently shown */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#6B7280' }}>
-                          {dayNum} {localizedMonth}
-                        </span>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#2E7D32', textTransform: 'uppercase' }}>
-                          {localizedDayName}
-                        </span>
-                      </div>
-
-                      {/* Temperature */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
-                        <span style={{ fontSize: '1.7rem', fontWeight: 800, color: '#1B4332', lineHeight: 1 }}>
-                          {Math.round(day.temp_max_c)}°
-                        </span>
-                        {getWeatherIcon(day.condition, true, 22)}
-                      </div>
-
-                      {/* Condition */}
-                      <div style={{ fontSize: '0.76rem', color: '#4B5563', fontWeight: 500, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {translateWeatherCondition(day.condition, lang)}
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                /* Fallback 4 days */
-                [
-                  { date: '22', month: 'Sep', day: 'Tue', temp: '29°', cond: 'Thunderstorm Expected' },
-                  { date: '23', month: 'Sep', day: 'Wed', temp: '30°', cond: 'Light Drizzle' },
-                  { date: '24', month: 'Sep', day: 'Thu', temp: '30°', cond: 'Overcast Sky' },
-                  { date: '25', month: 'Sep', day: 'Fri', temp: '29°', cond: 'Partly Cloudy' }
-                ].map((item, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      backgroundColor: '#FFFFFF',
-                      borderRadius: '14px',
-                      padding: '14px',
-                      border: '1.5px solid #F0F2EE',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '4px'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#6B7280' }}>
-                        {item.date} {translateMonthName(item.month, lang)}
-                      </span>
-                      <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#2E7D32' }}>
-                        {translateDayName(item.day, lang)}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: '1.7rem', fontWeight: 800, color: '#1B4332', margin: '4px 0' }}>{item.temp}</span>
-                    <span style={{ fontSize: '0.76rem', color: '#4B5563' }}>{translateWeatherCondition(item.cond, lang)}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* SECTION E: HARVESTING COST & REALIZATION (Clear Farmer Arithmetic) */}
-          <div style={{
-            backgroundColor: '#E7F5EA',
-            borderRadius: '16px',
-            padding: '20px',
-            border: '1.5px solid #CBE8D2',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '14px'
-            }}>
-              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#1B4332', margin: 0 }}>
-                {t.dashboard.harvestingCost}
-              </h3>
-              <button
-                type="button"
-                onClick={() => onNavigate('smart-mandi')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#2E7D32',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <span>{t.dashboard.mandiRates}</span>
-                <ArrowRight size={13} />
-              </button>
-            </div>
-
-            {/* Arithmetic Breakdown for Smallholder Farmer */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem' }}>
-                <span style={{ color: '#4B5563' }}>{t.dashboard.grossValue || 'अंदाजे एकूण उत्पन्न'}:</span>
-                <strong style={{ color: '#1B4332' }}>₹1,50,000</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem' }}>
-                <span style={{ color: '#DC2626' }}>{t.dashboard.inputLaborCost || 'बियाणे, खते व मजुरी खर्च'}:</span>
-                <strong style={{ color: '#DC2626' }}>-₹50,000</strong>
-              </div>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'baseline',
-                paddingTop: '8px',
-                borderTop: '1.5px dashed #A7D7B5'
-              }}>
-                <span style={{ fontSize: '0.88rem', fontWeight: 800, color: '#166534' }}>
-                  {t.dashboard.estimatedNetProfit || 'हातातील निव्वळ रोख नफा'}:
-                </span>
-                <span style={{ fontSize: '1.85rem', fontWeight: 900, color: '#166534', letterSpacing: '-0.02em' }}>
-                  ₹1,00,000
-                </span>
-              </div>
-            </div>
-
-            <div style={{
-              fontSize: '0.78rem',
-              color: '#2D5F3E',
-              backgroundColor: '#FFFFFF',
-              padding: '10px 12px',
-              borderRadius: '8px',
-              border: '1px solid #CBEBD4',
-              lineHeight: 1.4
-            }}>
-              💡 <strong>{lang === 'mr' ? 'बाजार सल्ला:' : lang === 'hi' ? 'मंडी सलाह:' : 'Market Tip:'}</strong> {lang === 'mr' ? 'वाहतूक एकत्रिकरण केल्यास संगमनेर बाजारात ₹8,500 जास्त नफा मिळू शकतो.' : lang === 'hi' ? 'वाहन शेयरिंग से संगमनेर मंडी में ₹8,500 अधिक लाभ मिल सकता है।' : 'Transport pooling to Sangamner APMC can net ₹8,500 higher profit.'}
-            </div>
-          </div>
-
-        </div>
-
-      </div>
-
     </div>
   );
 }

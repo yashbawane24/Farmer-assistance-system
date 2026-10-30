@@ -27,6 +27,25 @@ function aiError(message, status = 502, code = 'AI_SERVICE_ERROR') {
 
 let cachedOptimizedModel = null;
 let modelResolutionPromise = null;
+let availableModelNames = null;
+
+// When a model answers "503 high demand" / "429", skip it for a while instead of
+// failing on it (and waiting) for every single request.
+const overloadedUntil = new Map();
+const OVERLOAD_COOLDOWN_MS = 10 * 60 * 1000;
+
+export function markModelOverloaded(model) {
+    overloadedUntil.set(model, Date.now() + OVERLOAD_COOLDOWN_MS);
+}
+
+const isUsable = (m) => (overloadedUntil.get(m) || 0) < Date.now() && (!availableModelNames || availableModelNames.has(m));
+
+// The preferred model, unless it was overloaded recently; then the next usable one
+export async function pickModel() {
+    const primary = await resolveOptimizedModel();
+    if (isUsable(primary)) return primary;
+    return PREFERRED_MODELS.find(m => m !== primary && isUsable(m)) || primary;
+}
 
 export function getThinkingConfigForModel(modelName) {
     if (!modelName) return undefined;
@@ -67,6 +86,7 @@ export async function resolveOptimizedModel() {
                     .map(m => m.name.replace(/^models\//, ''))
             );
 
+            availableModelNames = availableNames.size ? availableNames : null;
             for (const candidate of PREFERRED_MODELS) {
                 if (availableNames.has(candidate)) {
                     cachedOptimizedModel = candidate;
@@ -108,7 +128,7 @@ export async function generate({
         throw aiError('AI is not configured on the server. Add GEMINI_API_KEY to server/.env.', 503, 'AI_NOT_CONFIGURED');
     }
 
-    const model = await resolveOptimizedModel();
+    const model = await pickModel();
     const effectiveThinkingConfig = thinkingConfig !== undefined ? thinkingConfig : getThinkingConfigForModel(model);
 
     const body = {
@@ -146,17 +166,12 @@ export async function generate({
     }
     let { res, data } = execResult;
 
-    // Single retry on transient capacity spike (429 / 503) with seamless fallback
+    // Capacity spike (429 / 503): remember it and switch to another model straight away
+    let usedModel = model;
     if (!res.ok && (res.status === 429 || res.status === 503)) {
-        console.warn(`[Gemini] ${model} hit status ${res.status}. Retrying once after 800ms...`);
-        await new Promise(r => setTimeout(r, 800));
-        const retryResult = await execCall().catch(() => null);
-        if (retryResult && retryResult.res?.ok) {
-            res = retryResult.res;
-            data = retryResult.data;
-        } else {
-            // Capacity spike: switch to alternative flash model
-            const fallbackModel = PREFERRED_MODELS.find(m => m !== model) || 'gemini-3.5-flash-lite';
+        markModelOverloaded(model);
+        {
+            const fallbackModel = PREFERRED_MODELS.find(m => m !== model && isUsable(m)) || PREFERRED_MODELS.find(m => m !== model);
             console.warn(`[Gemini] ${model} high demand (${res.status}). Switching to ${fallbackModel}...`);
             const fallbackThinking = getThinkingConfigForModel(fallbackModel);
             const fallbackBody = {
@@ -179,6 +194,7 @@ export async function generate({
             if (fallbackRes && fallbackRes.ok) {
                 res = fallbackRes;
                 data = await fallbackRes.json().catch(() => ({}));
+                usedModel = fallbackModel;
             }
         }
     }
@@ -196,7 +212,7 @@ export async function generate({
 
     const elapsed = Date.now() - startTime;
     if (process.env.DEBUG_PERF !== 'false') {
-        console.log(`⏱️ [Gemini Generate] Model: ${model} | Tokens: ~${text.length / 4 | 0} | Duration: ${elapsed}ms`);
+        console.log(`⏱️ [Gemini Generate] Model: ${usedModel} | Tokens: ~${text.length / 4 | 0} | Duration: ${elapsed}ms`);
     }
 
     if (!responseSchema) return text;
@@ -225,7 +241,7 @@ export async function streamGenerate({
         throw aiError('AI is not configured on the server. Add GEMINI_API_KEY to server/.env.', 503, 'AI_NOT_CONFIGURED');
     }
 
-    const model = await resolveOptimizedModel();
+    const model = await pickModel();
     const effectiveThinkingConfig = getThinkingConfigForModel(model);
 
     const body = {
@@ -260,8 +276,10 @@ export async function streamGenerate({
         });
 
         if (res.status === 429 || res.status === 503) {
-            await new Promise(r => setTimeout(r, 600));
-            res = await fetch(`${API_BASE}/${model}:streamGenerateContent?alt=sse`, {
+            // Overloaded: remember it and retry once on the next available model
+            markModelOverloaded(model);
+            const alt = PREFERRED_MODELS.find(m => m !== model && isUsable(m)) || model;
+            res = await fetch(`${API_BASE}/${alt}:streamGenerateContent?alt=sse`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
                 body: JSON.stringify(body),
@@ -381,7 +399,7 @@ export async function transcribeWithGemini({ audioData, mimeType = 'audio/webm',
     const langLabel = LANGUAGE_NAMES[language] || 'Marathi/Hindi/English';
     const instruction = `Transcribe this farmer's spoken question exactly, in ${langLabel} script. Return only the transcribed text with no extra commentary or markdown.`;
 
-    const model = await resolveOptimizedModel();
+    const model = await pickModel();
     const thinkingConfig = getThinkingConfigForModel(model);
 
     const text = await generate({

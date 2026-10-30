@@ -1,4 +1,5 @@
 import { query, queryOne, run } from '../models/db.js';
+import { signToken, hashPassword, verifyPassword, isHashed } from '../middleware/auth.js';
 
 export class AuthService {
     static async login(identifier, password) {
@@ -35,7 +36,7 @@ export class AuthService {
                     // Check if any matching user matches the given password
                     for (const uId of matchingUserIds) {
                         const candidate = await queryOne("SELECT * FROM users WHERE id = ?", [uId]);
-                        if (candidate && (candidate.password_hash === password || candidate.password_hash === trimmedPass)) {
+                        if (candidate && (verifyPassword(password, candidate.password_hash) || verifyPassword(trimmedPass, candidate.password_hash))) {
                             user = candidate;
                             break;
                         }
@@ -55,12 +56,17 @@ export class AuthService {
             throw err;
         }
 
-        const isPasswordMatch = user.password_hash === password || user.password_hash === trimmedPass;
+        const isPasswordMatch = verifyPassword(password, user.password_hash) || verifyPassword(trimmedPass, user.password_hash);
         if (!isPasswordMatch) {
             const err = new Error('Invalid password. Please check your credentials.');
             err.status = 401;
             err.code = 'INVALID_PASSWORD';
             throw err;
+        }
+
+        // Upgrade accounts that still have a plain-text password to a salted scrypt hash
+        if (!isHashed(user.password_hash)) {
+            await run("UPDATE users SET password_hash = ? WHERE id = ?", [hashPassword(trimmedPass), user.id]);
         }
 
         // Fetch associated farmer profile and farm
@@ -83,7 +89,7 @@ export class AuthService {
         }
 
         // Generate session token
-        const token = `sfas_token_${user.id}_${Date.now()}`;
+        const token = signToken(user.id);
 
         return {
             token,
@@ -122,7 +128,7 @@ export class AuthService {
 
         const userResult = await run(
             "INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, 'farmer')",
-            [email.toLowerCase().trim(), password, fullName]
+            [email.toLowerCase().trim(), hashPassword(String(password).trim()), fullName]
         );
         const userId = userResult.lastInsertRowid;
 
@@ -142,12 +148,14 @@ export class AuthService {
     }
 
     static async getDemoProfiles() {
+        // Only the two seeded demo personas; never list real farmers' emails publicly
         const users = await query(`
-            SELECT u.id, u.email, u.full_name, p.district, p.state, p.farmer_type, p.language_pref,
+            SELECT u.id, u.full_name, p.district, p.state, p.farmer_type, p.language_pref,
                    f.farm_name, f.land_size_acres, f.soil_type, f.water_reliability, f.current_crop, f.crop_stage
             FROM users u
             JOIN farmer_profiles p ON u.id = p.user_id
             JOIN farms f ON p.id = f.farmer_profile_id
+            WHERE u.email IN ('ramesh@sfas.in', 'rajesh@sfas.in')
         `);
         return users;
     }
@@ -179,8 +187,10 @@ export class FarmerService {
             water_source,
             water_reliability,
             current_crop,
-            crop_stage
+            crop_stage,
+            sowing_date
         } = updateData;
+        const validSowingDate = /^\d{4}-\d{2}-\d{2}$/.test(sowing_date || '') ? sowing_date : null;
 
         await run(`
             UPDATE farms 
@@ -190,10 +200,20 @@ export class FarmerService {
                 water_source = COALESCE(?, water_source),
                 water_reliability = COALESCE(?, water_reliability),
                 current_crop = COALESCE(?, current_crop),
-                crop_stage = COALESCE(?, crop_stage)
+                crop_stage = COALESCE(?, crop_stage),
+                sowing_date = COALESCE(?, sowing_date)
             WHERE id = ?
-        `, [farm_name, land_size_acres, soil_type, water_source, water_reliability, current_crop, crop_stage, farmId]);
+        `, [farm_name ?? null, land_size_acres ?? null, soil_type ?? null, water_source ?? null, water_reliability ?? null, current_crop ?? null, crop_stage ?? null, validSowingDate, farmId]);
 
         return queryOne("SELECT * FROM farms WHERE id = ?", [farmId]);
+    }
+
+    static async updateProfileLocation(userId, { district, fullName }) {
+        if (district) {
+            await run("UPDATE farmer_profiles SET district = ?, state = 'Maharashtra' WHERE user_id = ?", [district, userId]);
+        }
+        if (fullName && String(fullName).trim()) {
+            await run("UPDATE users SET full_name = ? WHERE id = ?", [String(fullName).trim().slice(0, 80), userId]);
+        }
     }
 }

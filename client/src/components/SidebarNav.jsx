@@ -1,4 +1,5 @@
 import React from 'react';
+import { districtLabel } from '../config/maharashtra.js';
 import {
   LayoutDashboard,
   User,
@@ -136,7 +137,7 @@ export function SidebarNav({
             {!isCollapsed && (
               <div className="sidebar-rail-user-meta">
                 <span className="sidebar-rail-user-name">{activeProfile?.fullName || (lang === 'mr' ? 'शेतकरी' : lang === 'hi' ? 'किसान' : 'Farmer')}</span>
-                <span className="sidebar-rail-user-location">📍 {activeProfile?.district || 'Maharashtra'}</span>
+                <span className="sidebar-rail-user-location">📍 {districtLabel(activeProfile?.district || 'Maharashtra', lang)}</span>
               </div>
             )}
           </div>

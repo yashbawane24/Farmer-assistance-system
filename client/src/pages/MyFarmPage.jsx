@@ -17,6 +17,7 @@ export function MyFarmPage({ activeProfile, onUpdateProfile, lang }) {
   const [waterReliability, setWaterReliability] = useState(activeProfile?.waterReliability || 'Moderately Reliable');
   const [currentCrop, setCurrentCrop] = useState(activeProfile?.currentCrop || 'Tomato');
   const [cropStage, setCropStage] = useState(activeProfile?.cropStage || 'Vegetative Stage');
+  const [sowingDate, setSowingDate] = useState(activeProfile?.sowingDate || '');
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -45,12 +46,16 @@ export function MyFarmPage({ activeProfile, onUpdateProfile, lang }) {
       soilType,
       waterReliability,
       currentCrop,
-      cropStage
+      cropStage,
+      sowingDate: sowingDate || null
     };
     onUpdateProfile(updated);
     try {
       if (activeProfile?.id) {
-        await api.updateFarm(activeProfile.id, {
+        await api.updateFarm(activeProfile.farmId || activeProfile.id, {
+          full_name: fullName,
+          district,
+          sowing_date: sowingDate || null,
           farm_name: farmName,
           land_size_acres: Number(landSize),
           soil_type: soilType,
@@ -228,6 +233,22 @@ export function MyFarmPage({ activeProfile, onUpdateProfile, lang }) {
             selectedValue={cropStage}
             onSelect={setCropStage}
             idPrefix="stage"
+          />
+        </div>
+
+        {/* Sowing date: used by the dashboard to show how many days the crop has been in the field */}
+        <div style={{ marginBottom: '28px', maxWidth: '320px' }}>
+          <label htmlFor="sowing-date" style={{ display: 'block', fontWeight: 600, fontSize: '0.88rem', marginBottom: '6px' }}>
+            {lang === 'hi' ? 'बुवाई की तारीख' : lang === 'mr' ? 'पेरणीची तारीख' : 'Sowing date'}
+          </label>
+          <input
+            id="sowing-date"
+            type="date"
+            value={sowingDate || ''}
+            max={new Date().toISOString().split('T')[0]}
+            onChange={(e) => setSowingDate(e.target.value)}
+            className="input-select"
+            style={{ width: '100%', height: '48px', padding: '0 12px', borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--color-border-strong)', fontSize: '0.95rem', fontFamily: 'inherit' }}
           />
         </div>
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { districtLabel } from './config/maharashtra.js';
 import { SidebarNav } from './components/SidebarNav.jsx';
 import { AuthModal } from './components/AuthModal.jsx';
 import { OfflineBadge } from './components/OfflineBadge.jsx';
@@ -70,6 +71,21 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Sessions without a signed token (older versions) or rejected by the server must sign in again
+  useEffect(() => {
+    if (isAuthenticated && !activeProfile?.token) {
+      handleLogout();
+    }
+    const onUnauthorized = () => {
+      if (localStorage.getItem('sfas_authenticated')) {
+        handleLogout();
+        setShowAuthModal(true);
+      }
+    };
+    window.addEventListener('sfas:unauthorized', onUnauthorized);
+    return () => window.removeEventListener('sfas:unauthorized', onUnauthorized);
+  }, []);
+
   const handleNavigate = (route, params = null) => {
     setCurrentRoute(route);
     setNavigationParams(params);
@@ -130,13 +146,13 @@ export function App() {
 
       {/* Top Header Bar for App - Not shown on landing page */}
       {currentRoute !== 'home' && (
-        <div style={{
-          marginLeft: isSidebarCollapsed ? '78px' : '240px',
-          transition: 'margin-left var(--transition-smooth)',
+        <div className={`app-with-sidebar app-top-header ${isSidebarCollapsed ? 'collapsed' : ''}`} style={{
           backgroundColor: '#FFFFFF',
           borderBottom: '1px solid var(--color-border-subtle)',
           padding: '12px 24px',
           display: 'flex',
+          flexWrap: 'wrap',
+          gap: '10px',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
@@ -151,14 +167,14 @@ export function App() {
               <Menu size={22} />
             </button>
 
-            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary-forest)', textTransform: 'capitalize' }}>
-              📍 {effectiveProfile.farmName} • {effectiveProfile.district} ({translateCropName(effectiveProfile.currentCrop, lang)})
+            <span className="app-header-farm" style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary-forest)', textTransform: 'capitalize' }}>
+              📍 {effectiveProfile.farmName} • {districtLabel(effectiveProfile.district, lang)} ({translateCropName(effectiveProfile.currentCrop, lang)})
             </span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {/* Live Clock Component */}
-            <LiveClock showSeconds={true} showDate={true} lang={lang} />
+            {/* Live Clock Component (hidden on phones to save space) */}
+            <div className="app-header-clock"><LiveClock showSeconds={true} showDate={true} lang={lang} /></div>
 
             {/* Language Picker */}
             <div style={{ display: 'flex', gap: '4px', background: 'var(--color-canvas-surface)', padding: '3px', borderRadius: '999px' }}>
@@ -210,9 +226,8 @@ export function App() {
 
       {/* Main Content Area */}
       <div
+        className={currentRoute !== 'home' ? `app-with-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}` : ''}
         style={{
-          marginLeft: currentRoute !== 'home' ? (isSidebarCollapsed ? '78px' : '240px') : '0',
-          transition: 'margin-left var(--transition-smooth)',
           minHeight: '100vh',
           display: 'flex',
           flexDirection: 'column'

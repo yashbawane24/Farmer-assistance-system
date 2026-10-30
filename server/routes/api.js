@@ -9,10 +9,15 @@ import {
     AgronomistController,
     SchemeController,
     RegionController,
-    PoolsController
+    PoolsController,
+    DashboardController
 } from '../controllers/apiControllers.js';
+import { attachUser, requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Every request: read the signed session token if present (req.user)
+router.use(attachUser);
 
 // Health check
 router.get('/health', (req, res) => {
@@ -34,32 +39,31 @@ router.post('/auth/register', AuthController.register);
 router.get('/auth/demo-profiles', AuthController.getDemoProfiles);
 
 // Farmer Profile & Farm Context
-router.get('/farmer/profile', FarmerController.getProfile);
-router.put('/farmer/farm/:farmId', FarmerController.updateFarm);
+router.get('/farmer/profile', requireAuth, FarmerController.getProfile);
+router.put('/farmer/farm/:farmId', requireAuth, FarmerController.updateFarm);
 
 // Crop Advisor & Dynamic ROI
 router.post('/crops/recommend', CropController.recommend);
 router.post('/roi/calculate', CropController.calculateRoi);
 
 // Edge AI Disease Detection
-router.post('/disease/diagnose', DiseaseController.diagnose);
-router.get('/disease/history', DiseaseController.getHistory);
+router.post('/disease/diagnose', requireAuth, DiseaseController.diagnose);
+router.get('/disease/history', requireAuth, DiseaseController.getHistory);
 
 // Smart Mandi & Transport Pooling
 router.get('/mandi/compare', MandiController.compare);
 router.get('/mandi/trend', MandiController.getPriceTrend);
 router.get('/mandi/status', MandiController.getStatus);
-router.post('/mandi/sync', MandiController.sync);
-router.post('/mandi/ingest', MandiController.ingest);
+router.post('/mandi/sync', requireAuth, MandiController.sync);
 router.get('/mandi/pools', MandiController.getPools);
-router.post('/mandi/join-pool', MandiController.joinPool);
+router.post('/mandi/join-pool', requireAuth, MandiController.joinPool);
 
 // Dedicated Transport Pooling API
 router.get('/pools', PoolsController.list);
-router.get('/pools/mine', PoolsController.mine);
-router.post('/pools', PoolsController.create);
-router.post('/pools/:id/join', PoolsController.join);
-router.delete('/pools/:id/members/:userId', PoolsController.leave);
+router.get('/pools/mine', requireAuth, PoolsController.mine);
+router.post('/pools', requireAuth, PoolsController.create);
+router.post('/pools/:id/join', requireAuth, PoolsController.join);
+router.delete('/pools/:id/members/:userId', requireAuth, PoolsController.leave);
 
 // Weather & Preventative Alerts
 router.get('/weather/forecast', WeatherAlertController.getForecast);
@@ -67,11 +71,14 @@ router.get('/weather/today', WeatherAlertController.getTodayStatus);
 router.get('/alerts/active', WeatherAlertController.getAlerts);
 
 // AI Voice Agronomist (RAG)
-router.get('/agronomist/warmup', AgronomistController.warmup);
-router.post('/agronomist/ask', AgronomistController.consult);
-router.post('/agronomist/voice-ask', AgronomistController.voiceAsk);
-router.post('/agronomist/ask-stream', AgronomistController.consultStream);
-router.post('/agronomist/transcribe', AgronomistController.transcribe);
+router.get('/agronomist/warmup', requireAuth, AgronomistController.warmup);
+router.post('/agronomist/ask', requireAuth, AgronomistController.consult);
+router.post('/agronomist/voice-ask', requireAuth, AgronomistController.voiceAsk);
+router.post('/agronomist/ask-stream', requireAuth, AgronomistController.consultStream);
+router.post('/agronomist/transcribe', requireAuth, AgronomistController.transcribe);
+
+// Dashboard summary (farm crop: mandi rate, income estimate, 30-day trend)
+router.get('/dashboard/summary', DashboardController.summary);
 
 // Government Schemes
 router.get('/schemes', SchemeController.list);

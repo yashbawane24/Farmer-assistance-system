@@ -49,7 +49,10 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess, lang = 'en' }) {
         waterReliability: res.farm?.water_reliability || 'Moderately Reliable',
         currentCrop: res.farm?.current_crop || 'Tomato',
         cropStage: res.farm?.crop_stage || 'Flowering to Fruit Set',
-        farmerType: res.profile?.farmer_type || 'Farmer'
+        sowingDate: res.farm?.sowing_date || null,
+        farmId: res.farm?.id || null,
+        farmerType: res.profile?.farmer_type || 'Farmer',
+        token: res.token
       });
       onClose();
     } catch (err) {
@@ -147,7 +150,10 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess, lang = 'en' }) {
         waterReliability: 'Moderately Reliable',
         currentCrop: crop,
         cropStage: 'Vegetative Stage',
-        farmerType: landSize > 5 ? 'Progressive Farmer (> 5 Ha)' : 'Smallholder Farmer (< 2 Ha)'
+        sowingDate: res.farm?.sowing_date || null,
+        farmId: res.farm?.id || null,
+        farmerType: landSize > 5 ? 'Progressive Farmer (> 5 Ha)' : 'Smallholder Farmer (< 2 Ha)',
+        token: res.token
       });
       onClose();
     } catch (err) {

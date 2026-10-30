@@ -44,7 +44,8 @@ export const MAHARASHTRA_DISTRICTS = [
     { name: 'Raigad', region: 'Konkan', mr: 'रायगड', hi: 'रायगढ़', lat: 18.6414, lon: 72.8722 },
     { name: 'Ratnagiri', region: 'Konkan', mr: 'रत्नागिरी', hi: 'रत्नागिरी', lat: 16.9902, lon: 73.3120 },
     { name: 'Sindhudurg', region: 'Konkan', mr: 'सिंधुदुर्ग', hi: 'सिंधुदुर्ग', lat: 16.1167, lon: 73.6833 },
-    { name: 'Mumbai', region: 'Konkan', mr: 'मुंबई', hi: 'मुंबई', lat: 19.0760, lon: 72.8777 }
+    { name: 'Mumbai', region: 'Konkan', mr: 'मुंबई शहर', hi: 'मुंबई शहर', lat: 18.9388, lon: 72.8354 },
+    { name: 'Mumbai Suburban', region: 'Konkan', mr: 'मुंबई उपनगर', hi: 'मुंबई उपनगर', lat: 19.1136, lon: 72.8697 }
 ];
 
 // Agmarknet and newer official names that differ from the names above
@@ -56,11 +57,15 @@ const DISTRICT_ALIASES = {
     'dharashiv': 'osmanabad',
     'ahilyanagar': 'ahmednagar',
     'ahmadnagar': 'ahmednagar',
-    'mumbai suburban': 'mumbai',
     'mumbai city': 'mumbai',
     'navi mumbai': 'thane',
     'buldana': 'buldhana',
-    'gondiya': 'gondia'
+    'gondiya': 'gondia',
+    'amarawati': 'amravati',
+    'amaravati': 'amravati',
+    'bid': 'beed',
+    'washim ': 'washim',
+    'raigarh': 'raigad'
 };
 
 export function findDistrict(name = '') {

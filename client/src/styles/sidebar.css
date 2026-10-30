@@ -367,3 +367,25 @@
     margin-left: 0;
   }
 }
+
+/* Top header bar shares the sidebar offset but not the full-height rule */
+.app-top-header.app-with-sidebar {
+  min-height: auto;
+}
+
+@media (max-width: 960px) {
+  .app-top-header {
+    padding: 10px 14px !important;
+  }
+  .app-header-clock {
+    display: none;
+  }
+  .app-header-farm {
+    display: inline-block;
+    max-width: 52vw;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+  }
+}

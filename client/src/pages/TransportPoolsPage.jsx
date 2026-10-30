@@ -482,7 +482,7 @@ export function TransportPoolsPage({ activeProfile, lang = 'en', onNavigate, nav
           >
             {myPools.map((pool) => {
               const departureDate = pool.departure_date || pool.scheduled_date;
-              const countdown = pool.countdown || getCountdownLabel(departureDate) || (lang === 'mr' ? '२ दिवसांत' : lang === 'hi' ? '२ दिनों में' : 'in 2 days');
+              const countdown = getCountdownLabel(departureDate) || pool.countdown || (lang === 'mr' ? '२ दिवसांत' : lang === 'hi' ? '२ दिनों में' : 'in 2 days');
               const isDeparted = pool.status === 'Departed';
               const cleanHub = (pool.pickup_hub || '').replace(new RegExp(`\\s*\\(${pool.pickup_district}\\)`, 'i'), '').trim();
 
@@ -655,7 +655,7 @@ export function TransportPoolsPage({ activeProfile, lang = 'en', onNavigate, nav
               const remaining = Math.max(capacity - filled, 0);
               const fillPercent = Math.min(Math.round((filled / capacity) * 100), 100);
               const departureDate = pool.departure_date || pool.scheduled_date;
-              const countdown = pool.countdown || getCountdownLabel(departureDate) || (lang === 'mr' ? '२ दिवसांत' : lang === 'hi' ? '२ दिनों में' : 'in 2 days');
+              const countdown = getCountdownLabel(departureDate) || pool.countdown || (lang === 'mr' ? '२ दिवसांत' : lang === 'hi' ? '२ दिनों में' : 'in 2 days');
               const isJoined = myPools.some((m) => m.id === pool.id);
               const joinableQty = Math.min(produceQuantity, remaining);
               const isFull = remaining <= 0;
@@ -713,7 +713,7 @@ export function TransportPoolsPage({ activeProfile, lang = 'en', onNavigate, nav
                         }}
                       >
                         <Clock size={13} />
-                        {isFull ? (p.poolFull || 'Pool Full') : countdown}
+                        {isFull ? (p.poolFull || (lang === 'mr' ? 'गट भरला' : lang === 'hi' ? 'समूह भरा' : 'Pool Full')) : countdown}
                       </span>
                     </div>
 
@@ -899,7 +899,7 @@ export function TransportPoolsPage({ activeProfile, lang = 'en', onNavigate, nav
                                     border: isMe ? '1px solid #A3E635' : '1px solid #E5DFD3'
                                   }}
                                 >
-                                  👨🏽‍🌾 {name} {isMe ? '(You)' : ''} {m.produceQuantityQuintal ? `• ${m.produceQuantityQuintal}q` : ''}
+                                  👨🏽‍🌾 {name} {isMe ? (lang === 'mr' ? '(तुम्ही)' : lang === 'hi' ? '(आप)' : '(You)') : ''} {m.produceQuantityQuintal ? `• ${m.produceQuantityQuintal}q` : ''}
                                 </span>
                               );
                             })}

@@ -36,7 +36,8 @@ export const MAHARASHTRA_DISTRICTS = [
   { name: 'Raigad', region: 'Konkan', mr: 'रायगड', hi: 'रायगढ़' },
   { name: 'Ratnagiri', region: 'Konkan', mr: 'रत्नागिरी', hi: 'रत्नागिरी' },
   { name: 'Sindhudurg', region: 'Konkan', mr: 'सिंधुदुर्ग', hi: 'सिंधुदुर्ग' },
-  { name: 'Mumbai', region: 'Konkan', mr: 'मुंबई', hi: 'मुंबई' }
+  { name: 'Mumbai', region: 'Konkan', mr: 'मुंबई शहर', hi: 'मुंबई शहर' },
+  { name: 'Mumbai Suburban', region: 'Konkan', mr: 'मुंबई उपनगर', hi: 'मुंबई उपनगर' }
 ];
 
 const REGION_NAMES = {

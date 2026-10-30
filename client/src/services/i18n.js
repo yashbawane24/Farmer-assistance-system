@@ -1293,7 +1293,7 @@ const weatherTranslations = {
     'partly cloudy night': 'अंशतः ढगाळ रात्र',
     'overcast night': 'ढगाळ रात्र',
     'sunny · clear': 'स्वच्छ सूर्यप्रकाश',
-    'sunny': 'उन्हाळा / कडक ऊन',
+    'sunny': 'ऊन',
     'mainly sunny': 'मुख्यतः ऊन',
     'partly cloudy': 'अंशतः ढगाळ',
     'partly sunny': 'ऊन-सावली',
@@ -1410,7 +1410,12 @@ const stageTranslations = {
     'flowering': 'फूल आने की अवस्था',
     'flowering to fruit set': 'फूल व फल लगने की अवस्था',
     'harvesting': 'कटाई व तुड़ाई अवस्था',
-    'fruit maturation & harvest': 'फल पकना व कटाई अवस्था'
+    'fruit maturation & harvest': 'फल पकना व कटाई अवस्था',
+    'pod filling': 'फली भरने की अवस्था',
+    'bulb development': 'कंद बनने की अवस्था',
+    'boll development': 'टिंडे बनने की अवस्था',
+    'grain filling': 'दाना भरने की अवस्था',
+    'maturity': 'पकने की अवस्था'
   },
   mr: {
     'seedling': 'रोपवाटिका / उगवण अवस्था',
@@ -1421,7 +1426,12 @@ const stageTranslations = {
     'flowering': 'फुलोरा अवस्था',
     'flowering to fruit set': 'फुलोरा व फळधारणा अवस्था',
     'harvesting': 'काढणी व तोडणी अवस्था',
-    'fruit maturation & harvest': 'फळ पक्वता व काढणी अवस्था'
+    'fruit maturation & harvest': 'फळ पक्वता व काढणी अवस्था',
+    'pod filling': 'शेंगा भरण्याची अवस्था',
+    'bulb development': 'कांदा पोसण्याची अवस्था',
+    'boll development': 'बोंडे तयार होण्याची अवस्था',
+    'grain filling': 'दाणे भरण्याची अवस्था',
+    'maturity': 'पक्वतेची अवस्था'
   }
 };
 
@@ -1539,4 +1549,30 @@ export function translateFullDate(dateStr = '', lang = 'en') {
     }
   }
   return res;
+}
+
+// Agmarknet variety names that appear on mandi cards
+const varietyTranslations = {
+  hi: { other: 'अन्य', yellow: 'पीला', local: 'देसी', hybrid: 'संकर', red: 'लाल', white: 'सफेद', faq: 'सामान्य गुणवत्ता' },
+  mr: { other: 'इतर', yellow: 'पिवळा', local: 'गावरान', hybrid: 'संकरित', red: 'लाल', white: 'पांढरा', faq: 'सामान्य दर्जा' }
+};
+
+export function translateVariety(variety = '', lang = 'en') {
+  if (lang === 'en' || !variety) return variety;
+  return varietyTranslations[lang]?.[variety.toLowerCase().trim()] || variety;
+}
+
+// "Kharif 2025-26 / Rabi 2026-27"
+export function translateSeasonLabel(label = '', lang = 'en') {
+  if (lang === 'en' || !label) return label;
+  const words = lang === 'mr' ? { Kharif: 'खरीप', Rabi: 'रब्बी' } : { Kharif: 'खरीफ', Rabi: 'रबी' };
+  return label.replace(/Kharif|Rabi/g, (w) => words[w]);
+}
+
+// ISO date (yyyy-mm-dd) -> "30 Oct" in the selected language
+export function formatShortDate(iso = '', lang = 'en') {
+  if (!iso) return '';
+  const d = new Date(`${iso}T12:00:00+05:30`);
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString(lang === 'mr' ? 'mr-IN' : lang === 'hi' ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'short' });
 }

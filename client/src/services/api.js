@@ -12,15 +12,39 @@ const RAW_URL = import.meta.env.VITE_API_URL || (
 );
 const BASE_URL = RAW_URL.replace(/\/+$/, '');
 
-async function fetchJson(endpoint, options = {}) {
+// Every request carries the selected language (so server-written text comes back translated)
+// and the signed session token of the logged-in farmer.
+function withLang(endpoint) {
+  const lang = (typeof localStorage !== 'undefined' && localStorage.getItem('sfas_lang')) || 'en';
+  if (/[?&]lang=/.test(endpoint)) return endpoint;
+  return `${endpoint}${endpoint.includes('?') ? '&' : '?'}lang=${encodeURIComponent(lang)}`;
+}
+
+export function getAuthToken() {
   try {
+    return JSON.parse(localStorage.getItem('sfas_active_profile') || 'null')?.token || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function fetchJson(endpoint, options = {}) {
+  endpoint = withLang(endpoint);
+  try {
+    const token = getAuthToken();
     const response = await fetch(`${BASE_URL}${endpoint}`, {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers
-      },
-      ...options
+      }
     });
+
+    // Session expired or missing: ask the farmer to sign in again
+    if (response.status === 401 && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sfas:unauthorized'));
+    }
 
     const text = await response.text();
     let data;
@@ -107,28 +131,12 @@ export const api = {
   // Smart Mandi & Transport
   compareMandis: (crop = 'Tomato', quantity = 25, district = 'Nashik') =>
     fetchJson(`/mandi/compare?crop=${encodeURIComponent(crop)}&quantity=${quantity}&district=${encodeURIComponent(district)}`),
+  getDashboardSummary: ({ district, crop, acres, soil, water }) =>
+    fetchJson(`/dashboard/summary?district=${encodeURIComponent(district)}&crop=${encodeURIComponent(crop)}&acres=${encodeURIComponent(acres)}&soil=${encodeURIComponent(soil)}&water=${encodeURIComponent(water)}`),
   getMandiPriceTrend: (crop = 'Tomato') =>
     fetchJson(`/mandi/trend?crop=${encodeURIComponent(crop)}`),
   getMandiStatus: () => fetchJson('/mandi/status'),
   syncMandiPrices: () => fetchJson('/mandi/sync', { method: 'POST' }),
-  ingestMandiRecords: (records) => fetchJson('/mandi/ingest', {
-    method: 'POST',
-    body: JSON.stringify({ records })
-  }),
-  syncMandiFromClient: async () => {
-    try {
-      const apiKey = '579b464db66ec23bdd00000121b85cefe0fa42345ec072c7c94a3375';
-      const url = `https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=${apiKey}&format=json&limit=1000&filters[state.keyword]=Maharashtra`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(12000) });
-      if (!res.ok) return null;
-      const json = await res.json();
-      if (!Array.isArray(json.records) || json.records.length === 0) return null;
-      return await api.ingestMandiRecords(json.records);
-    } catch (e) {
-      console.warn('Client Agmarknet relay skipped:', e.message);
-      return null;
-    }
-  },
   getTransportPools: () => fetchJson('/mandi/pools'),
   joinTransportPool: (payload) => fetchJson('/mandi/join-pool', {
     method: 'POST',
@@ -196,9 +204,10 @@ export const api = {
   }) => {
     const url = `${BASE_URL}/agronomist/ask-stream`;
     try {
+      const token = getAuthToken();
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
           question,
           audioBase64,

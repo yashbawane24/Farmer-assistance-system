@@ -128,48 +128,6 @@ export async function syncMandiPrices() {
 /**
  * Ingests an array of raw Agmarknet records (e.g. relayed from client browser in India).
  */
-export async function ingestAgmarknetRecords(records = []) {
-    if (!Array.isArray(records) || records.length === 0) return 0;
-
-    const rows = [];
-    for (const r of records) {
-        const arrivalDate = toIsoDate(r.arrival_date) || (r.arrival_date?.includes('-') ? r.arrival_date : null);
-        const modal = toNumber(r.modal_price || r.modal_price_quintal);
-        if (!arrivalDate || modal <= 0) continue;
-        const crop = findCropByCommodity(r.commodity);
-        rows.push([
-            r.commodity,
-            crop?.name || r.crop_name || r.commodity,
-            r.variety || 'Other',
-            r.market,
-            findDistrict(r.district)?.name || r.district,
-            r.state || REGION_STATE,
-            arrivalDate,
-            toNumber(r.min_price || r.min_price_quintal) || modal,
-            toNumber(r.max_price || r.max_price_quintal) || modal,
-            modal
-        ]);
-    }
-
-    if (rows.length === 0) return 0;
-
-    await runBatch(`
-        INSERT INTO live_mandi_prices (commodity, crop_name, variety, market, district, state, arrival_date,
-            min_price_quintal, max_price_quintal, modal_price_quintal, source)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'agmarknet_live')
-        ON CONFLICT (commodity, variety, market, arrival_date) DO UPDATE SET
-            min_price_quintal = excluded.min_price_quintal,
-            max_price_quintal = excluded.max_price_quintal,
-            modal_price_quintal = excluded.modal_price_quintal,
-            fetched_at = CURRENT_TIMESTAMP
-    `, rows);
-
-    syncStatus.lastSuccess = new Date().toISOString();
-    syncStatus.lastError = null;
-    syncStatus.rowsSaved = (syncStatus.rowsSaved || 0) + rows.length;
-    console.log(`📈 [Agmarknet Relay] Successfully ingested ${rows.length} live Maharashtra mandi price rows.`);
-    return rows.length;
-}
 
 export function startMandiPriceScheduler() {
     syncStatus.configured = isAgmarknetConfigured();
@@ -218,7 +176,9 @@ export async function getLatestCropPrices(cropName) {
             entry.previous_date = row.arrival_date;
         }
     }
-    return { crop, rows: [...latest.values()] };
+    // Standard district names (Agmarknet spells some differently, e.g. "Amarawati")
+    const normalised = [...latest.values()].map(r => ({ ...r, district: findDistrict(r.district)?.name || r.district }));
+    return { crop, rows: normalised };
 }
 
 /**

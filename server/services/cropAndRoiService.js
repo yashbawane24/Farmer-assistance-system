@@ -703,6 +703,9 @@ export class RoiCalculatorService {
                 assumedPricePerQuintal: pricePerQuintal,
                 priceSource: marketPrice.source,
                 priceSourceLabel: marketPrice.label,
+                priceMarkets: marketPrice.markets ?? null,
+                priceAsOf: marketPrice.asOf ?? null,
+                priceScope: marketPrice.scope ?? null,
                 costPerAcre: costPerAcreTotal
             },
             costBreakdown: {

@@ -3,6 +3,7 @@ import { CloudRain, AlertTriangle, ShieldCheck, Wind, Droplets, Thermometer, Che
 import { api } from '../services/api.js';
 import { AudioSpeaker } from '../components/AudioSpeaker.jsx';
 import { LiveClock } from '../components/LiveClock.jsx';
+import { districtLabel } from '../config/maharashtra.js';
 import { 
   getTranslation, 
   translateWeatherCondition, 
@@ -30,15 +31,16 @@ export function WeatherAlertsPage({ activeProfile, lang, onNavigate }) {
       const crop = activeProfile?.currentCrop || 'Tomato';
       const stage = activeProfile?.cropStage || 'Flowering to Fruit Set';
 
-      const [todayRes, forecastRes, alertsRes] = await Promise.all([
+      const [todayRes, forecastRes, alertsRes] = await Promise.allSettled([
         api.getTodayWeatherStatus(district, crop, stage),
         api.getWeatherForecast(district),
         api.getActiveAlerts(district, crop, stage)
       ]);
 
-      setTodayWeather(todayRes);
-      setForecast(forecastRes);
-      setAlertsData(alertsRes);
+      setTodayWeather(todayRes.status === 'fulfilled' && todayRes.value?.current_temp_c != null ? todayRes.value : null);
+      setForecast(forecastRes.status === 'fulfilled' && Array.isArray(forecastRes.value) ? forecastRes.value : []);
+      // The API returns a plain list of alerts
+      setAlertsData({ alerts: alertsRes.status === 'fulfilled' && Array.isArray(alertsRes.value) ? alertsRes.value : [] });
     } catch (e) {
       console.error(e);
     } finally {
@@ -46,18 +48,9 @@ export function WeatherAlertsPage({ activeProfile, lang, onNavigate }) {
     }
   };
 
-  const effectiveWeather = todayWeather || forecast[0] || {
-    temp_max_c: 30,
-    temp_min_c: 22,
-    current_temp_c: 22.4,
-    humidity_percent: 90,
-    rainfall_prob_percent: 45,
-    wind_speed_kmh: 8,
-    condition: 'Overcast Night',
-    currentTime: '03:00 AM',
-    timePeriod: 'Night (Cool & Dew)',
-    agro_summary: 'Dew accumulation on leaves. Avoid nighttime spraying; inspect for fungal spore wetness at dawn.'
-  };
+  // Only real data from Open-Meteo is shown; nothing is invented when the service is unreachable
+  const effectiveWeather = todayWeather || forecast[0] || null;
+
 
   return (
     <div className="container" style={{ padding: '36px var(--space-md) 64px var(--space-md)' }}>
@@ -74,23 +67,30 @@ export function WeatherAlertsPage({ activeProfile, lang, onNavigate }) {
         </p>
       </div>
 
+      {!loading && !effectiveWeather && (
+        <div style={{ backgroundColor: '#FEF3C7', border: '1.5px solid #F59E0B', color: '#92400E', borderRadius: 'var(--radius-md)', padding: '16px 20px', marginBottom: '28px', fontWeight: 600 }}>
+          {lang === 'hi' ? 'लाइव मौसम अभी उपलब्ध नहीं है। कुछ मिनट बाद फिर कोशिश करें।' : lang === 'mr' ? 'थेट हवामान आत्ता उपलब्ध नाही. काही मिनिटांनी पुन्हा प्रयत्न करा.' : 'Live weather is unavailable right now. Please try again in a few minutes.'}
+        </div>
+      )}
+
       {/* TODAY'S WEATHER WITH "WHAT THIS MEANS FOR YOUR FARM" */}
+      {effectiveWeather && (
       <div style={{
         backgroundColor: '#FFFFFF',
         borderRadius: 'var(--radius-lg)',
         border: '1.5px solid var(--color-border-subtle)',
-        padding: '32px',
+        padding: 'clamp(18px, 4vw, 32px)',
         boxShadow: 'var(--shadow-md)',
         marginBottom: '36px'
       }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', marginBottom: '20px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <span className="badge badge-wheat">{t.weather.liveStatus}</span>
               <LiveClock showSeconds={false} showDate={true} lang={lang} />
             </div>
             <h2 style={{ fontSize: '1.85rem', color: 'var(--color-primary-forest)' }}>
-              {district} {t.weather.districtStatus}
+              {districtLabel(district, lang)} {t.weather.districtStatus}
             </h2>
             <div style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)' }}>
               {t.weather.standingCrop}{' '}
@@ -115,7 +115,7 @@ export function WeatherAlertsPage({ activeProfile, lang, onNavigate }) {
               {effectiveWeather.current_temp_c != null ? `${effectiveWeather.current_temp_c}°C` : `${effectiveWeather.temp_max_c}°C`}
             </div>
             <div style={{ fontSize: '0.72rem', color: '#6B7280', marginTop: '2px' }}>
-              Max {effectiveWeather.temp_max_c}° / Min {effectiveWeather.temp_min_c}°C
+              {lang === 'hi' ? 'अधिकतम' : lang === 'mr' ? 'कमाल' : 'Max'} {effectiveWeather.temp_max_c}° / {lang === 'hi' ? 'न्यूनतम' : lang === 'mr' ? 'किमान' : 'Min'} {effectiveWeather.temp_min_c}°C
             </div>
           </div>
 
@@ -172,6 +172,7 @@ export function WeatherAlertsPage({ activeProfile, lang, onNavigate }) {
           </p>
         </div>
       </div>
+      )}
 
       {/* ACTIVE PREVENTATIVE ALERTS */}
       <h3 style={{ fontSize: '1.35rem', marginBottom: '16px', color: 'var(--color-primary-forest)' }}>
@@ -265,7 +266,7 @@ export function WeatherAlertsPage({ activeProfile, lang, onNavigate }) {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '12px' }}>
-                <span>💧 {lang === 'hi' ? 'नमी' : lang === 'mr' ? 'आर्द्रता' : 'Humidity'}: {day.humidity_percent}%</span>
+                <span>💧 {lang === 'hi' ? 'नमी' : lang === 'mr' ? 'आर्द्रता' : 'Humidity'}: {day.humidity_percent != null ? `${day.humidity_percent}%` : '–'}</span>
                 <span>🌧️ {lang === 'hi' ? 'बारिश' : lang === 'mr' ? 'पाऊस' : 'Rain'}: {day.rainfall_prob_percent}%</span>
               </div>
 

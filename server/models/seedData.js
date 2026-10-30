@@ -304,64 +304,47 @@ export async function ensureTransportPoolsSchemaAndSeed() {
     saveDb();
 }
 
+/**
+ * A one-time Agmarknet snapshot (server/data/seedMandiPrices.json) is loaded ONLY when the price table is empty,
+ * so a fresh deployment shows something before the first live sync. Rows keep their ORIGINAL arrival dates and are
+ * marked 'agmarknet_snapshot'; the UI shows the real date, so old prices are never presented as today's.
+ */
 export async function ensureMandiBenchmarkPrices() {
     try {
+        // Older versions moved snapshot dates forward to "today". Remove those rows so no price carries a false date.
+        await run("DELETE FROM live_mandi_prices WHERE source = 'agmarknet_benchmark'");
+
+        const countRes = await query("SELECT COUNT(*) as count FROM live_mandi_prices");
+        if ((countRes[0]?.count || 0) > 0) return;
+
         const seedPath = path.resolve(__dirname, '../data/seedMandiPrices.json');
         if (!fs.existsSync(seedPath)) return;
-
-        const raw = fs.readFileSync(seedPath, 'utf8');
-        const seedRows = JSON.parse(raw);
+        const seedRows = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
         if (!Array.isArray(seedRows) || seedRows.length === 0) return;
 
-        const today = new Date().toISOString().split('T')[0];
-        const dateRes = await query("SELECT MAX(arrival_date) as maxDate, COUNT(*) as count FROM live_mandi_prices");
-        const currentMax = dateRes[0]?.maxDate;
-        const currentCount = dateRes[0]?.count || 0;
+        const batch = seedRows.map(r => [
+            r.commodity,
+            r.crop_name,
+            r.variety || 'Other',
+            r.market,
+            r.district,
+            r.state || 'Maharashtra',
+            r.arrival_date,
+            r.min_price_quintal,
+            r.max_price_quintal,
+            r.modal_price_quintal,
+            'agmarknet_snapshot'
+        ]);
 
-        // If DB has no records, or latest date is older than today, synchronize benchmark prices
-        if (currentCount === 0 || !currentMax || currentMax < today) {
-            const seedMax = seedRows[0]?.arrival_date || today;
-            const diffMs = new Date(today).getTime() - new Date(seedMax).getTime();
-            const dayOffset = Math.max(0, Math.floor(diffMs / (24 * 60 * 60 * 1000)));
-
-            const shiftDate = (dStr) => {
-                if (!dayOffset || !dStr) return dStr;
-                const d = new Date(dStr);
-                d.setDate(d.getDate() + dayOffset);
-                return d.toISOString().split('T')[0];
-            };
-
-            const batch = seedRows.map(r => [
-                r.commodity,
-                r.crop_name,
-                r.variety || 'Other',
-                r.market,
-                r.district,
-                r.state || 'Maharashtra',
-                shiftDate(r.arrival_date),
-                r.min_price_quintal,
-                r.max_price_quintal,
-                r.modal_price_quintal,
-                'agmarknet_benchmark'
-            ]);
-
-            await runBatch(`
-                INSERT INTO live_mandi_prices (
-                    commodity, crop_name, variety, market, district, state, arrival_date,
-                    min_price_quintal, max_price_quintal, modal_price_quintal, source
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT (commodity, variety, market, arrival_date) DO UPDATE SET
-                    min_price_quintal = excluded.min_price_quintal,
-                    max_price_quintal = excluded.max_price_quintal,
-                    modal_price_quintal = excluded.modal_price_quintal,
-                    fetched_at = CURRENT_TIMESTAMP
-            `, batch);
-
-            saveDb();
-            console.log(`🌾 Synchronized ${batch.length} Maharashtra APMC benchmark mandi prices (aligned to ${today}).`);
-        }
+        await runBatch(`
+            INSERT OR IGNORE INTO live_mandi_prices (
+                commodity, crop_name, variety, market, district, state, arrival_date,
+                min_price_quintal, max_price_quintal, modal_price_quintal, source
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, batch);
+        console.log(`🌾 Loaded ${batch.length} Agmarknet snapshot prices (original dates kept) until the first live sync.`);
     } catch (e) {
-        console.warn('⚠️ Could not load benchmark mandi prices:', e.message);
+        console.warn('⚠️ Could not load snapshot mandi prices:', e.message);
     }
 }
 

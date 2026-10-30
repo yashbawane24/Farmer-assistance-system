@@ -1,4 +1,5 @@
 import { query, queryOne, run } from '../models/db.js';
+import { tr } from '../config/serverI18n.js';
 import { REGION_STATE, MSP_YEAR_LABEL, findDistrict, estimateRoadDistanceKm, TRANSPORT_VEHICLE_CONFIGS, calculateFreightEconomics } from '../config/maharashtra.js';
 import { getLatestCropPrices, getCropPriceHistory, isAgmarknetConfigured, syncStatus } from './agmarknetService.js';
 
@@ -8,17 +9,26 @@ const FREIGHT_RATE_PER_KM_QUINTAL = 1.85;
 const MANDI_HANDLING_FEE_PER_QUINTAL = 35;
 const MAX_MANDIS_SHOWN = 9;
 
+// Agmarknet market names come as "APMC Ausa ", "Latur", "Pune(Manjri)" - normalise spacing and the APMC prefix
+export function cleanMarketName(name = '') {
+    return String(name).replace(/\s+/g, ' ').trim().replace(/^APMC\s+/i, '').replace(/\s+APMC$/i, '').trim();
+}
+
 export class SmartMandiService {
     /**
      * Compares real Agmarknet prices of a crop across Maharashtra APMCs and calculates the True Net Realization:
      * Net Realization = Gross Produce Value - (Road Distance * Freight Rate * Quintals) - Mandi Fees
      */
-    static async compareMandis({ cropName = 'Tomato', produceQuantityQuintal = 25.0, userDistrict = 'Nashik' }) {
+    static async compareMandis({ cropName = 'Tomato', produceQuantityQuintal = 25.0, userDistrict = 'Nashik', lang = 'en' }) {
         const { crop, rows } = await getLatestCropPrices(cropName);
         const home = findDistrict(userDistrict);
 
-        const evaluatedMandis = rows.map(item => {
-            const distanceKm = estimateRoadDistanceKm(home?.name || userDistrict, item.district) ?? 0;
+        const evaluatedMandis = rows.map(row => {
+            // Agmarknet spellings vary ("Amarawati", "Sholapur"): use the standard district name
+            const item = { ...row, district: findDistrict(row.district)?.name || row.district };
+            // Unknown district -> distance unknown; never treat it as 0 km (that made far mandis look nearest)
+            const distanceKm = estimateRoadDistanceKm(home?.name || userDistrict, item.district);
+            if (distanceKm === null) return null;
             const rawGrossRevenue = Math.round(item.modal_price_quintal * produceQuantityQuintal);
             const transportCostPerQuintal = Math.round(distanceKm * FREIGHT_RATE_PER_KM_QUINTAL);
             const totalTransportCost = Math.round(transportCostPerQuintal * produceQuantityQuintal);
@@ -28,8 +38,8 @@ export class SmartMandiService {
 
             return {
                 mandiId: `${item.market}|${item.variety}`,
-                mandiName: `${item.market} APMC`,
-                market: item.market,
+                mandiName: `${cleanMarketName(item.market)} APMC`,
+                market: cleanMarketName(item.market),
                 variety: item.variety,
                 district: item.district,
                 state: item.state,
@@ -53,7 +63,7 @@ export class SmartMandiService {
                 isHighestRawPrice: false,
                 isBestNetRealization: false
             };
-        });
+        }).filter(Boolean);
 
         // Sort by take-home money and keep the most relevant mandis
         evaluatedMandis.sort((a, b) => b.economics.netTakeHomeRealization - a.economics.netTakeHomeRealization);
@@ -67,10 +77,17 @@ export class SmartMandiService {
         const highestRaw = mandis.find(m => m.isHighestRawPrice);
         const best = mandis[0];
         let explanation = null;
+        const money = (n) => n.toLocaleString('en-IN');
         if (best && highestRaw && highestRaw !== best) {
-            explanation = `${highestRaw.mandiName} quotes the highest rate (₹${highestRaw.quotedModalPriceQuintal}/q), but it is ~${highestRaw.distanceKm} km away. After transport and handling, ${best.mandiName} puts the most money in your hand: ₹${best.economics.netTakeHomeRealization.toLocaleString('en-IN')}.`;
+            explanation = tr('mandi.insight.distant', lang, {
+                high: highestRaw.mandiName, highPrice: highestRaw.quotedModalPriceQuintal, km: highestRaw.distanceKm,
+                best: best.mandiName, net: money(best.economics.netTakeHomeRealization)
+            });
         } else if (best) {
-            explanation = `${best.mandiName} gives both the highest rate (₹${best.quotedModalPriceQuintal}/q on ${best.priceDate}) and the best take-home amount: ₹${best.economics.netTakeHomeRealization.toLocaleString('en-IN')}.`;
+            explanation = tr('mandi.insight.same', lang, {
+                best: best.mandiName, price: best.quotedModalPriceQuintal, date: best.priceDate,
+                net: money(best.economics.netTakeHomeRealization)
+            });
         }
 
         const latestDate = rows.reduce((max, r) => (!max || r.arrival_date > max ? r.arrival_date : max), null);
@@ -94,8 +111,11 @@ export class SmartMandiService {
             dataSource: {
                 name: 'Agmarknet, Government of India (data.gov.in)',
                 liveFeedConfigured: isAgmarknetConfigured(),
-                lastSync: syncStatus.lastSuccess || (evaluatedMandis.length > 0 ? 'Verified Maharashtra Benchmark Feed' : null),
-                syncError: evaluatedMandis.length > 0 ? null : syncStatus.lastError
+                lastSync: syncStatus.lastSuccess,
+                syncError: syncStatus.lastError,
+                // Days since the newest price was reported; the UI warns when prices are not from today
+                daysSinceLatest: latestDate ? Math.floor((Date.now() - new Date(`${latestDate}T00:00:00+05:30`).getTime()) / 86400000) : null,
+                isSnapshot: rows.length > 0 && rows.every(r => r.source === 'agmarknet_snapshot')
             },
             insight: best ? {
                 bestMandi: best.mandiName,

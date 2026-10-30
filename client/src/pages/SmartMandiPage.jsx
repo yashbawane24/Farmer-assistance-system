@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Truck, TrendingUp, Users, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck, DollarSign } from 'lucide-react';
 import { api } from '../services/api.js';
 import { AudioSpeaker } from '../components/AudioSpeaker.jsx';
-import { getTranslation, translateCropName } from '../services/i18n.js';
+import { getTranslation, translateCropName, translateVariety, translateSeasonLabel, formatShortDate } from '../services/i18n.js';
 import { DistrictSelect } from '../components/DistrictSelect.jsx';
 import { MANDI_CROPS, isMaharashtraDistrict, districtLabel } from '../config/maharashtra.js';
 
@@ -17,7 +17,6 @@ export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
   const [priceTrend, setPriceTrend] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const hasAutoSyncedRef = React.useRef(false);
 
   useEffect(() => {
     if (activeProfile?.currentCrop) setSelectedCrop(activeProfile.currentCrop);
@@ -38,22 +37,6 @@ export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
       setComparisonData(compRes);
       setPriceTrend(trendRes);
 
-      // If backend reports an older date and we haven't synced yet, trigger seamless client relay
-      const today = new Date().toISOString().split('T')[0];
-      if (!hasAutoSyncedRef.current && compRes?.latestArrivalDate && compRes.latestArrivalDate < today) {
-        hasAutoSyncedRef.current = true;
-        api.syncMandiFromClient().then((synced) => {
-          if (synced && synced.data?.rowsSaved > 0) {
-            Promise.all([
-              api.compareMandis(selectedCrop, produceQuantity, district),
-              api.getMandiPriceTrend(selectedCrop)
-            ]).then(([updatedComp, updatedTrend]) => {
-              setComparisonData(updatedComp);
-              setPriceTrend(updatedTrend);
-            });
-          }
-        });
-      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -64,10 +47,8 @@ export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
   const handleLiveSync = async () => {
     setSyncing(true);
     try {
-      let syncRes = await api.syncMandiPrices().catch(() => null);
-      if (!syncRes || !syncRes.data?.rowsSaved) {
-        syncRes = await api.syncMandiFromClient();
-      }
+      // The server fetches fresh prices from Agmarknet (the API key stays on the server)
+      await api.syncMandiPrices().catch(() => null);
       await loadMandiData();
     } catch (err) {
       console.warn('Sync failed:', err);
@@ -244,7 +225,7 @@ export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
           </span>
           {comparisonData.crop?.msp && (
             <span>
-              🛡️ MSP: <strong>₹{comparisonData.crop.msp.toLocaleString('en-IN')}/q</strong> ({comparisonData.crop.mspYear})
+              🛡️ {lang === 'mr' ? 'हमीभाव (MSP)' : lang === 'hi' ? 'न्यूनतम समर्थन मूल्य (MSP)' : 'MSP'}: <strong>₹{comparisonData.crop.msp.toLocaleString('en-IN')}/q</strong> ({translateSeasonLabel(comparisonData.crop.mspYear, lang)})
             </span>
           )}
         </div>
@@ -398,7 +379,7 @@ export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
                   {districtLabel(mandi.district, lang)} (~{mandi.distanceKm} km {lang === 'hi' ? 'अनुमानित दूरी' : lang === 'mr' ? 'अंदाजे अंतर' : 'est. road distance'})
                 </div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-                  {mandi.variety} • {lang === 'hi' ? 'दिनांक' : lang === 'mr' ? 'दिनांक' : 'Reported'} {mandi.priceDate}
+                  {translateVariety(mandi.variety, lang)} • {lang === 'hi' ? 'दिनांक' : lang === 'mr' ? 'दिनांक' : 'Reported'} {formatShortDate(mandi.priceDate, lang)}
                 </div>
               </div>
 
@@ -495,7 +476,7 @@ export function SmartMandiPage({ activeProfile, lang, onNavigate }) {
                       }}
                       title={`${pt.date}: ₹${pt.minPrice}–₹${pt.maxPrice}, ${pt.markets} APMC`}
                     />
-                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{pt.day}</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{formatShortDate(pt.date, lang)}</span>
                   </div>
                 );
               })}
