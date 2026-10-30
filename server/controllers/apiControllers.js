@@ -6,7 +6,7 @@ import { WeatherService, AlertRuleEngine } from '../services/weatherAndAlertServ
 import { AgronomistRagService, GovernmentSchemeService } from '../services/agronomistAndSchemeService.js';
 import { syncMandiPrices } from '../services/agmarknetService.js';
 import { REGION_STATE, MAHARASHTRA_DISTRICTS, REGION_CROPS, MSP_YEAR_LABEL } from '../config/maharashtra.js';
-import { generate, isGeminiConfigured, splitDataUrl, LANGUAGE_NAMES } from '../services/geminiService.js';
+import { generate, transcribeAudio, isGeminiConfigured, splitDataUrl, LANGUAGE_NAMES } from '../services/geminiService.js';
 
 export const AuthController = {
     async login(req, res, next) {
@@ -334,6 +334,57 @@ export const AgronomistController = {
         }
     },
 
+    async voiceAsk(req, res, next) {
+        try {
+            const { audioBase64, mimeType = 'audio/webm', farmerId = 1, language = 'en', history = [] } = req.body;
+            if (!audioBase64) {
+                return res.status(400).json({ success: false, error: { message: 'Audio data is required' } });
+            }
+
+            const transcript = await transcribeAudio({ audioBase64, mimeType, language });
+            if (!transcript || transcript.trim().length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: {
+                        code: 'NO_SPEECH',
+                        message: 'Could not clearly recognize speech. Please try speaking again.'
+                    }
+                });
+            }
+
+            const answer = await AgronomistRagService.consult({
+                question: transcript,
+                farmerId: Number(farmerId),
+                language,
+                history
+            });
+
+            res.json({
+                success: true,
+                data: {
+                    transcript,
+                    answer
+                }
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    async warmup(req, res, next) {
+        try {
+            const { farmerId = 1, district = 'Nashik', crop = 'Tomato' } = req.query;
+            const result = await AgronomistRagService.warmup({
+                farmerId: Number(farmerId),
+                district,
+                crop
+            });
+            res.json({ success: true, data: result });
+        } catch (err) {
+            next(err);
+        }
+    },
+
     async consultStream(req, res, next) {
         try {
             const { question, audioBase64, audioMimeType = 'audio/webm', farmerId = 1, language = 'en', history = [] } = req.body;
@@ -398,43 +449,8 @@ export const AgronomistController = {
             if (!audioBase64) {
                 return res.status(400).json({ success: false, error: { message: 'Audio data is required' } });
             }
-            if (!isGeminiConfigured()) {
-                return res.status(503).json({
-                    success: false,
-                    error: {
-                        code: 'AI_NOT_CONFIGURED',
-                        message: 'Speech transcription service is not configured. Add GEMINI_API_KEY to server/.env'
-                    }
-                });
-            }
 
-            const { mimeType: detectedMime, data: audioData } = splitDataUrl(audioBase64, mimeType);
-            const cleanMime = (detectedMime || mimeType || 'audio/webm').split(';')[0].trim().toLowerCase();
-            const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
-            if (audioData.length * 0.75 > MAX_AUDIO_BYTES) {
-                return res.status(413).json({
-                    success: false,
-                    error: {
-                        code: 'AUDIO_TOO_LARGE',
-                        message: 'Audio recording exceeds 8 MB limit'
-                    }
-                });
-            }
-
-            const langLabel = LANGUAGE_NAMES[language] || 'Marathi/Hindi/English';
-            const instruction = `Transcribe this farmer's spoken question exactly, in ${langLabel} script. Return only the transcribed text.`;
-
-            const text = await generate({
-                contents: [{
-                    role: 'user',
-                    parts: [
-                        { text: instruction },
-                        { inline_data: { mime_type: cleanMime, data: audioData } }
-                    ]
-                }],
-                temperature: 0.1
-            });
-
+            const text = await transcribeAudio({ audioBase64, mimeType, language });
             res.json({ success: true, data: { text: (text || '').trim() } });
         } catch (err) {
             next(err);

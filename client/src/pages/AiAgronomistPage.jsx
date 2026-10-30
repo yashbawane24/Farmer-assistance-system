@@ -1,46 +1,69 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, Send, Sparkles, CheckCircle2, ShieldAlert, CornerDownRight, Database, Sprout, Square } from 'lucide-react';
+import {
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
+  Send,
+  Sparkles,
+  CheckCircle2,
+  Circle,
+  AlertTriangle,
+  CloudSun,
+  TrendingUp,
+  ShieldCheck,
+  ChevronDown,
+  ChevronUp,
+  Sprout,
+  Square,
+  HelpCircle,
+  Camera,
+  Calendar,
+  Layers
+} from 'lucide-react';
 import { VoiceAssistant } from '../services/voiceAssistant.js';
 import { api } from '../services/api.js';
-import { AudioSpeaker } from '../components/AudioSpeaker.jsx';
 import { getTranslation, translateCropName, translateCropStage, translateSoilType } from '../services/i18n.js';
 
 const DEBUG_PERF = true;
 
 function getVoiceErrorMessage(code, lang) {
-  const isLanIp = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.protocol !== 'https:';
+  const isLanIp = typeof window !== 'undefined' &&
+    window.location.hostname !== 'localhost' &&
+    window.location.hostname !== '127.0.0.1' &&
+    window.location.protocol !== 'https:';
 
   if (code === 'not-allowed' || code === 'service-not-allowed') {
     if (lang === 'mr') {
       return isLanIp
-        ? 'मायक्रोफोन ॲक्सेस ब्लॉक केला आहे. (टीप: ब्राउझर मायक्रोफोन फक्त HTTPS किंवा http://localhost वर चालतो, लोकल आयपी 192.168.x.x वर चालत नाही).'
-        : 'मायक्रोफोन परवानगी ब्लॉक केली आहे. कृपया ब्राऊझर ॲड्रेस बारमध्ये जाऊन मायक्रोफोन सुरू करा (Allow करा). (टीप: मायक्रोफोन फक्त HTTPS किंवा http://localhost वर चालतो).';
+        ? 'मायक्रोफोन ॲक्सेस ब्लॉक केला आहे. (टीप: ब्राउझर मायक्रोफोन फक्त HTTPS किंवा localhost वर चालतो).'
+        : 'मायक्रोफोन परवानगी ब्लॉक केली आहे. कृपया ब्राऊझर ॲड्रेस बारमध्ये जाऊन मायक्रोफोन सुरू करा.';
     }
     if (lang === 'hi') {
       return isLanIp
-        ? 'माइक्रोफ़ोन अनुमति अवरुद्ध है। (ध्यान दें: ब्राउज़र माइक केवल HTTPS या http://localhost पर कार्य करता है, 192.168.x.x जैसे LAN IP पर नहीं)।'
-        : 'माइक्रोफ़ोन अनुमति अवरुद्ध है। कृपया ब्राउज़र एड्रेस बार में जाकर माइक की अनुमति दें (Allow करें)। (ध्यान दें: माइक केवल HTTPS या http://localhost पर कार्य करता है)।';
+        ? 'माइक्रोफ़ोन अनुमति अवरुद्ध है। (ब्राउज़र माइक केवल HTTPS या localhost पर कार्य करता है)।'
+        : 'माइक्रोफ़ोन अनुमति अवरुद्ध है। कृपया ब्राउज़र सेटिंग्स में जाकर माइक की अनुमति दें।';
     }
     return isLanIp
-      ? 'Microphone permission blocked. (Note: Browser mic requires HTTPS or http://localhost; it is blocked on LAN IPs like 192.168.x.x).'
-      : 'Microphone permission blocked. Please click the lock/settings icon in the browser address bar to allow microphone access. (Note: Mic requires HTTPS or http://localhost).';
+      ? 'Microphone blocked. (Browser mic requires HTTPS or http://localhost).'
+      : 'Microphone permission blocked. Please allow microphone access in your browser settings.';
   }
 
   if (code === 'no-speech') {
-    if (lang === 'mr') return 'काहीही ऐकू आले नाही. कृपया पुन्हा प्रयत्न करा आणि माइकजवळ येऊन स्पष्ट बोला.';
-    if (lang === 'hi') return 'कोई आवाज़ नहीं सुनाई दी। कृपया माइक के पास आकर दोबारा स्पष्ट बोलें।';
-    return 'No speech detected. Please try again and speak closer to the microphone.';
+    if (lang === 'mr') return 'काहीही ऐकू आले नाही. कृपया माइकजवळ येऊन स्पष्ट बोला.';
+    if (lang === 'hi') return 'कोई आवाज़ नहीं सुनाई दी। कृपया माइक के पास आकर स्पष्ट बोलें।';
+    return 'No speech detected. Please speak closer to the microphone.';
   }
 
   if (code === 'audio-capture') {
-    if (lang === 'mr') return 'कोणताही मायक्रोफोन आढळला नाही. कृपया माइक तपासा किंवा जोडा.';
-    if (lang === 'hi') return 'कोई माइक्रोफ़ोन नहीं मिला। कृपया माइक कनेक्ट करें और पुनः प्रयास करें।';
-    return 'No microphone found on this device. Please connect a microphone and try again.';
+    if (lang === 'mr') return 'कोणताही मायक्रोफोन आढळला नाही. कृपया माइक तपासा.';
+    if (lang === 'hi') return 'कोई माइक्रोफ़ोन नहीं मिला। कृपया माइक कनेक्ट करें।';
+    return 'No microphone found on this device.';
   }
 
-  if (lang === 'mr') return 'आवाज ओळखण्यात समस्या आली. कृपया पुन्हा बोला किंवा टाइप करून प्रश्न विचारा.';
-  if (lang === 'hi') return 'आवाज़ पहचानने में समस्या आई। कृपया दोबारा बोलें या टाइप करके पूछें।';
-  return 'Voice recognition issue. Please try again or type your question.';
+  if (lang === 'mr') return 'आवाज ओळखण्यात समस्या आली. कृपया पुन्हा बोला किंवा टाइप करा.';
+  if (lang === 'hi') return 'आवाज़ पहचानने में समस्या आई। कृपया दोबारा बोलें या टाइप करें।';
+  return 'Voice recognition issue. Please speak again or type your question.';
 }
 
 function getSupportedAudioMimeType() {
@@ -67,22 +90,6 @@ function blobToBase64(blob) {
   });
 }
 
-// Extracts complete sentences for streaming TTS and leaves remaining incomplete text
-function extractSentences(text) {
-  // Punctuation characters: ., !, ?, ।, \n
-  const regex = /([^.!?।\n]+[.!?।\n]+)/g;
-  const sentences = [];
-  let lastIndex = 0;
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    const s = match[1].trim();
-    if (s) sentences.push(s);
-    lastIndex = regex.lastIndex;
-  }
-  const remainder = text.slice(lastIndex);
-  return { sentences, remainder };
-}
-
 export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
   const t = getTranslation(lang);
 
@@ -92,7 +99,9 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
   const [voiceError, setVoiceError] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState(lang || 'en');
   const [loading, setLoading] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
+  const [speakingMsgIdx, setSpeakingMsgIdx] = useState(null);
+  const [checkedSteps, setCheckedSteps] = useState(new Set());
+  const [expandedDetails, setExpandedDetails] = useState({});
 
   const recognitionRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -106,49 +115,115 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
   const isStartingRef = useRef(false);
   const hasAutoSentRef = useRef(false);
   const latestRecognizedTextRef = useRef('');
-  const abortControllerRef = useRef(null);
 
-  // Performance measurement timestamps
-  const perfRef = useRef({
-    micStart: 0,
-    lastSpeech: 0,
-    transcriptReady: 0,
-    requestSent: 0,
-    firstChunk: 0,
-    firstSentence: 0,
-    answerComplete: 0,
-    model: ''
-  });
+  // Pre-warm model and context cache on mount or when profile changes
+  useEffect(() => {
+    const farmerId = activeProfile?.id || 1;
+    const district = activeProfile?.district || 'Nashik';
+    const crop = activeProfile?.currentCrop || 'Tomato';
+    api.warmupAgronomist({ farmerId, district, crop });
+  }, [activeProfile?.id, activeProfile?.district, activeProfile?.currentCrop]);
 
-  // Sync selectedLanguage whenever lang changes
+  // Sync selectedLanguage when lang prop changes
   useEffect(() => {
     if (lang) setSelectedLanguage(lang);
   }, [lang]);
 
-  // Clean up any active speech recognition / recording when unmounting
+  // Cleanup active voice on unmount
   useEffect(() => {
     return () => {
       stopAllVoice();
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      VoiceAssistant.stopSpeaking();
     };
   }, []);
 
-  // Stop active recording and clear error when language changes
+  // Stop recording if interaction language changes
   useEffect(() => {
     stopAllVoice();
     setVoiceError('');
   }, [selectedLanguage]);
 
-  const [conversation, setConversation] = useState([
+  // Initial welcome message structured as an agronomist card
+  const getInitialGreeting = (l) => {
+    const cropName = translateCropName(activeProfile?.currentCrop || 'Tomato', l);
+    const farmer = activeProfile?.fullName || (l === 'mr' ? 'शेतकरी बंधू' : l === 'hi' ? 'किसान भाई' : 'Farmer');
+
+    if (l === 'mr') {
+      return {
+        intent: 'general',
+        headline: `नमस्कार ${farmer}! मी तुमचा कृषी मित्र आहे.`,
+        likelyCause: `${cropName} पिकावरील कीड, रोग, फवारणी किंवा बाजारभावाबाबत विचारा.`,
+        confidence: 'high',
+        steps: [
+          'माइक बटण दाबून तुमच्या शेतातील समस्या थेट बोला.',
+          'किंवा खालील प्रश्नांपैकी एक निवडा.',
+          'पिकावरील रोगाची खात्री करण्यासाठी रोग स्कॅनर वापरा.'
+        ],
+        treatment: null,
+        priceInfo: null,
+        weatherNote: '',
+        askBack: '',
+        appAction: 'disease_scan',
+        followUps: [
+          'माझ्या टोमॅटो पानांवर काळे डाग आहेत',
+          'आजचा सोयाबीन बाजारभाव काय आहे?',
+          'उद्या फवारणी करावी का?'
+        ],
+        speakText: `नमस्कार ${farmer}! मी तुमचा कृषी मित्र आहे. तुमच्या शेतात काय समस्या येत आहे ते सांगा.`
+      };
+    }
+    if (l === 'hi') {
+      return {
+        intent: 'general',
+        headline: `नमस्ते ${farmer}! मैं आपका कृषि मित्र हूँ।`,
+        likelyCause: `${cropName} की फसल में कीट, रोग, स्प्रे या मंडी भाव के बारे में पूछें।`,
+        confidence: 'high',
+        steps: [
+          'माइक बटन दबाकर अपने खेत की समस्या बोलकर बताएं।',
+          'या नीचे दिए गए सुझावों में से कोई सवाल चुनें।',
+          'रोग की सटीक पुष्टि के लिए रोग स्कैनर का उपयोग करें।'
+        ],
+        treatment: null,
+        priceInfo: null,
+        weatherNote: '',
+        askBack: '',
+        appAction: 'disease_scan',
+        followUps: [
+          'टमाटर के पत्तों पर पीले और काले धब्बे हैं',
+          'सोयाबीन का आज का मंडी भाव क्या है?',
+          'क्या कल कीटनाशक छिड़काव करना चाहिए?'
+        ],
+        speakText: `नमस्ते ${farmer}! मैं आपका कृषि मित्र हूँ। अपने खेत की समस्या बताएं या सवाल पूछें।`
+      };
+    }
+    return {
+      intent: 'general',
+      headline: `Hello ${farmer}! I am Krishi Mitra, your AI Agronomist.`,
+      likelyCause: `Ready to assist with your ${cropName} crop, pest control, weather or mandi prices.`,
+      confidence: 'high',
+      steps: [
+        'Tap the microphone to ask your field question directly.',
+        'Or tap any quick question chip below.',
+        'Use Disease Scanner to confirm leaf symptoms with a photo.'
+      ],
+      treatment: null,
+      priceInfo: null,
+      weatherNote: '',
+      askBack: '',
+      appAction: 'disease_scan',
+      followUps: [
+        'My tomato leaves have yellow patches with dark rings',
+        'Soybean rate in Latur today?',
+        'Should I spray tomorrow?'
+      ],
+      speakText: `Hello ${farmer}! I am Krishi Mitra. Tell me what is happening in your field or tap the microphone to speak.`
+    };
+  };
+
+  const [conversation, setConversation] = useState(() => [
     {
       role: 'assistant',
-      text: lang === 'mr'
-        ? `नमस्कार ${activeProfile?.fullName || 'शेतकरी बंधू'}, मी तुमचा कृषी मित्र आहे. तुमच्या ${translateCropName(activeProfile?.currentCrop || 'Tomato', lang)} शेतात काय समस्या येत आहे ते सांगा.`
-        : (lang === 'hi'
-          ? `नमस्ते ${activeProfile?.fullName || 'किसान भाई'}, मैं आपका कृषि मित्र हूँ। अपने ${translateCropName(activeProfile?.currentCrop || 'Tomato', lang)} के खेत की समस्या बताएं या माइक दबाकर बोलें।`
-          : `Hello ${activeProfile?.fullName || 'Farmer'}, I am your AI Agronomist. Tell me what is happening in your field or tap the microphone to speak.`),
+      data: getInitialGreeting(lang || 'en'),
       timestamp: lang === 'hi' ? 'अभी' : lang === 'mr' ? 'आत्ता' : 'Just now',
       ragContext: {
         crop: activeProfile?.currentCrop || 'Tomato',
@@ -159,38 +234,59 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
     }
   ]);
 
-  // Update initial greeting when lang changes
+  // Update initial greeting on language toggle
   useEffect(() => {
-    setConversation([
-      {
-        role: 'assistant',
-        text: lang === 'mr'
-          ? `नमस्कार ${activeProfile?.fullName || 'शेतकरी बंधू'}, मी तुमचा कृषी मित्र आहे. तुमच्या ${translateCropName(activeProfile?.currentCrop || 'Tomato', lang)} शेतात काय समस्या येत आहे ते सांगा.`
-          : (lang === 'hi'
-            ? `नमस्ते ${activeProfile?.fullName || 'किसान भाई'}, मैं आपका कृषि मित्र हूँ। अपने ${translateCropName(activeProfile?.currentCrop || 'Tomato', lang)} के खेत की समस्या बताएं या माइक दबाकर बोलें।`
-            : `Hello ${activeProfile?.fullName || 'Farmer'}, I am your AI Agronomist. Tell me what is happening in your field or tap the microphone to speak.`),
-        timestamp: lang === 'hi' ? 'अभी' : lang === 'mr' ? 'आत्ता' : 'Just now',
-        ragContext: {
-          crop: activeProfile?.currentCrop || 'Tomato',
-          stage: activeProfile?.cropStage || 'Flowering to Fruit Set',
-          soil: activeProfile?.soilType || 'Black Soil (Regur)',
-          district: activeProfile?.district || 'Nashik'
-        }
+    setConversation((prev) => {
+      if (prev.length <= 1) {
+        return [
+          {
+            role: 'assistant',
+            data: getInitialGreeting(lang),
+            timestamp: lang === 'hi' ? 'अभी' : lang === 'mr' ? 'आत्ता' : 'Just now',
+            ragContext: {
+              crop: activeProfile?.currentCrop || 'Tomato',
+              stage: activeProfile?.cropStage || 'Flowering to Fruit Set',
+              soil: activeProfile?.soilType || 'Black Soil (Regur)',
+              district: activeProfile?.district || 'Nashik'
+            }
+          }
+        ];
       }
-    ]);
+      return prev;
+    });
   }, [lang]);
 
-  // Quick Prompt Chips
+  // Quick Prompt Suggestions
   const promptSuggestions = [
-    { en: "My tomato leaves are turning yellow with dark spots", hi: "मेरे टमाटर के पत्ते पीले पड़ रहे हैं और धब्बे हैं", mr: "माझ्या टोमॅटोच्या पानांवर काळे डाग पडून पिवळी पडत आहेत" },
-    { en: "What is today's mandi rate for my crop, and should I sell now?", hi: "आज मेरी फसल का मंडी भाव क्या है, क्या अभी बेचना चाहिए?", mr: "आज माझ्या पिकाचा बाजारभाव काय आहे, आत्ता विकावे का?" },
-    { en: "How do I control pink bollworm in cotton?", hi: "कपास में गुलाबी सुंडी का नियंत्रण कैसे करें?", mr: "कापसावरील गुलाबी बोंडअळीचे नियंत्रण कसे करावे?" },
-    { en: "Rain is forecast this week, should I spray today?", hi: "इस हफ्ते बारिश का अनुमान है, क्या आज छिड़काव करूं?", mr: "या आठवड्यात पावसाचा अंदाज आहे, आज फवारणी करावी का?" }
+    {
+      en: 'My tomato leaves have yellow patches with dark rings',
+      hi: 'टमाटर के पत्तों पर पीले और काले छल्ले वाले धब्बे हैं',
+      mr: 'टोमॅटोच्या पानांवर काळे गोल डाग पडून पिवळी पडत आहेत'
+    },
+    {
+      en: 'Soybean rate in Latur today?',
+      hi: 'लातूर में आज सोयाबीन का भाव क्या है?',
+      mr: 'लातूरमध्ये आज सोयाबीनचा भाव काय आहे?'
+    },
+    {
+      en: 'Should I spray tomorrow?',
+      hi: 'क्या मुझे कल कीटनाशक स्प्रे करना चाहिए?',
+      mr: 'उद्या शेतात फवारणी करावी का?'
+    },
+    {
+      en: 'Which scheme gives money for drip irrigation?',
+      hi: 'ड्रिप सिंचाई के लिए कौन सी सरकारी योजना है?',
+      mr: 'ठिबक सिंचनासाठी कोणती योजना अनुदान देते?'
+    },
+    {
+      en: 'My crop is not good',
+      hi: 'मेरी फसल अच्छी नहीं चल रही है',
+      mr: 'माझे पीक चांगले नाही'
+    }
   ];
 
   const stopAllVoice = () => {
     isStartingRef.current = false;
-    VoiceAssistant.stopSpeaking();
 
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current);
@@ -213,30 +309,22 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
     }
 
     if (audioContextRef.current) {
-      try {
-        audioContextRef.current.close();
-      } catch (e) {}
+      try { audioContextRef.current.close(); } catch (e) {}
       audioContextRef.current = null;
     }
 
     if (recognitionRef.current) {
-      try {
-        recognitionRef.current.abort();
-      } catch (e) {}
+      try { recognitionRef.current.abort(); } catch (e) {}
       recognitionRef.current = null;
     }
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      try {
-        mediaRecorderRef.current.stop();
-      } catch (e) {}
+      try { mediaRecorderRef.current.stop(); } catch (e) {}
       mediaRecorderRef.current = null;
     }
 
     if (mediaStreamRef.current) {
-      try {
-        mediaStreamRef.current.getTracks().forEach((t) => t.stop());
-      } catch (e) {}
+      try { mediaStreamRef.current.getTracks().forEach((t) => t.stop()); } catch (e) {}
       mediaStreamRef.current = null;
     }
 
@@ -244,42 +332,39 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
     setVoiceStatusText('');
   };
 
-  // Interrupt active answer streaming and speech readout immediately
-  const handleInterrupt = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
+  const handleToggleSpeak = (idx, speakText) => {
+    if (speakingMsgIdx === idx) {
+      VoiceAssistant.stopSpeaking();
+      setSpeakingMsgIdx(null);
+      return;
     }
     VoiceAssistant.stopSpeaking();
-    setIsStreaming(false);
-    setLoading(false);
-    stopAllVoice();
+    setSpeakingMsgIdx(idx);
+    VoiceAssistant.speak(speakText, selectedLanguage, () => {
+      setSpeakingMsgIdx(null);
+    });
+  };
 
-    // Clean up any pending thinking assistant bubble
-    setConversation((prev) => {
-      const next = [...prev];
-      const lastIdx = next.length - 1;
-      if (lastIdx >= 0 && next[lastIdx].role === 'assistant' && (next[lastIdx].isThinking || !next[lastIdx].text)) {
-        return next.slice(0, lastIdx);
-      }
+  const toggleStepCheck = (stepKey) => {
+    setCheckedSteps((prev) => {
+      const next = new Set(prev);
+      if (next.has(stepKey)) next.delete(stepKey);
+      else next.add(stepKey);
       return next;
     });
   };
 
-  // Fallback MediaRecorder with Web Audio API RMS VAD (Firefox / Brave / non-WebSpeech)
+  const toggleDetails = (msgIdx) => {
+    setExpandedDetails((prev) => ({
+      ...prev,
+      [msgIdx]: !prev[msgIdx]
+    }));
+  };
+
+  // Fallback MediaRecorder with Web Audio API RMS VAD (auto-stop after 1s silence, max 15s)
   const startFallbackRecording = async () => {
     hasAutoSentRef.current = false;
     hasDetectedSpeechRef.current = false;
-    perfRef.current = {
-      micStart: Date.now(),
-      lastSpeech: 0,
-      transcriptReady: 0,
-      requestSent: 0,
-      firstChunk: 0,
-      firstSentence: 0,
-      answerComplete: 0,
-      model: ''
-    };
 
     if (!navigator?.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       setVoiceError(getVoiceErrorMessage('audio-capture', selectedLanguage));
@@ -300,7 +385,6 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
       mediaRecorderRef.current = recorder;
       const chunks = [];
 
-      // Setup Web Audio API Analyser for RMS voice activity detection
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (AudioCtx) {
@@ -323,16 +407,13 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
             }
             const rms = Math.sqrt(sum / dataArray.length);
 
-            // Sensitive speech threshold for natural mic input
             if (rms > 0.012) {
               hasDetectedSpeechRef.current = true;
-              perfRef.current.lastSpeech = Date.now();
               if (fallbackSilenceTimerRef.current) {
                 clearTimeout(fallbackSilenceTimerRef.current);
                 fallbackSilenceTimerRef.current = null;
               }
             } else if (hasDetectedSpeechRef.current) {
-              // Once speech has been detected, auto-stop after 1.0s of silence
               if (!fallbackSilenceTimerRef.current) {
                 fallbackSilenceTimerRef.current = setTimeout(() => {
                   if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
@@ -355,7 +436,6 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
       };
 
       recorder.onstop = async () => {
-        perfRef.current.transcriptReady = Date.now();
         if (vadIntervalRef.current) {
           clearInterval(vadIntervalRef.current);
           vadIntervalRef.current = null;
@@ -384,35 +464,14 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
 
         setIsRecording(false);
         setVoiceStatusText(
-          selectedLanguage === 'mr' ? 'आवाज ओळखत आहे...' : (selectedLanguage === 'hi' ? 'आवाज़ पहचान रहे हैं...' : 'Transcribing voice...')
+          selectedLanguage === 'mr' ? 'आवाज तपासत आहे...' : (selectedLanguage === 'hi' ? 'आवाज़ पहचानी जा रही है...' : 'Transcribing voice...')
         );
 
         try {
           const base64Data = await blobToBase64(audioBlob);
-          // Transcribe speech using fast Gemini endpoint
-          const res = await api.transcribeAudio({
-            audioBase64: base64Data,
-            mimeType: actualMime,
-            language: selectedLanguage
-          });
-          const transcribedText = (res?.data?.text || res?.text || '').trim();
-
-          if (!transcribedText) {
-            setVoiceStatusText('');
-            setVoiceError(
-              selectedLanguage === 'mr' ? 'आवाज स्पष्ट ऐकू आला नाही. कृपया पुन्हा बोला.' :
-              selectedLanguage === 'hi' ? 'आवाज़ स्पष्ट सुनाई नहीं दी। कृपया पुनः बोलें।' :
-              'Could not clearly hear speech. Please try speaking again.'
-            );
-            return;
-          }
-
-          // Populate input box so farmer sees their words
-          setQuestion(transcribedText);
-          setVoiceStatusText('');
-          handleSendQuestion(transcribedText);
+          handleSendVoiceQuestion(base64Data, actualMime);
         } catch (transcribeErr) {
-          console.error('Transcription error:', transcribeErr);
+          console.error('Recording error:', transcribeErr);
           setVoiceError(transcribeErr.message || getVoiceErrorMessage('unknown', selectedLanguage));
           setVoiceStatusText('');
         }
@@ -422,13 +481,12 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
       setIsRecording(true);
       setVoiceStatusText(t.agronomist.listening);
 
-      // Hard stop safety limit reduced from 15s to 7s
       if (hardStopTimerRef.current) clearTimeout(hardStopTimerRef.current);
       hardStopTimerRef.current = setTimeout(() => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
           mediaRecorderRef.current.stop();
         }
-      }, 7000);
+      }, 15000);
     } catch (err) {
       const isDenied = err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError';
       setVoiceError(getVoiceErrorMessage(isDenied ? 'not-allowed' : 'audio-capture', selectedLanguage));
@@ -437,20 +495,10 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
     }
   };
 
-  // Native Speech Recognition with instant interim display and 900ms silence auto-send
+  // Native Speech Recognition with live text and 800ms silence auto-send (Chrome/Edge/Android)
   const startNativeSpeechRecognition = () => {
     hasAutoSentRef.current = false;
     latestRecognizedTextRef.current = '';
-    perfRef.current = {
-      micStart: Date.now(),
-      lastSpeech: 0,
-      transcriptReady: 0,
-      requestSent: 0,
-      firstChunk: 0,
-      firstSentence: 0,
-      answerComplete: 0,
-      model: ''
-    };
     setIsRecording(true);
     setVoiceStatusText(t.agronomist.listening);
 
@@ -459,28 +507,24 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
       onResult: ({ finalTranscript, interimTranscript, currentTranscript, isFinal }) => {
         const currentText = (currentTranscript || finalTranscript || interimTranscript || '').trim();
         if (currentText) {
-          perfRef.current.lastSpeech = Date.now();
           setQuestion(currentText);
           latestRecognizedTextRef.current = currentText;
         }
 
-        // Reset 900ms silence timer on each voice result
+        // Auto-send after 800 ms of silence
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = setTimeout(() => {
           const textToSend = latestRecognizedTextRef.current.trim();
           if (textToSend && !hasAutoSentRef.current) {
             hasAutoSentRef.current = true;
-            perfRef.current.transcriptReady = Date.now();
-            if (DEBUG_PERF) console.log('⚡ [Native STT] 900ms silence auto-send triggered for:', textToSend);
+            if (DEBUG_PERF) console.log('⚡ [Native STT] 800ms silence auto-send triggered for:', textToSend);
             stopAllVoice();
             handleSendQuestion(textToSend);
           }
-        }, 900);
+        }, 800);
 
-        // Immediate send if browser signals isFinal
         if (isFinal && finalTranscript && !hasAutoSentRef.current) {
           hasAutoSentRef.current = true;
-          perfRef.current.transcriptReady = Date.now();
           if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
           setQuestion(finalTranscript);
           stopAllVoice();
@@ -489,7 +533,6 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
       },
       onError: async (errorCode) => {
         if (DEBUG_PERF) console.warn('STT Error:', errorCode);
-        // Switch to fallback automatically on network failure, service denial, or unsupported
         if (errorCode === 'network' || errorCode === 'unsupported' || errorCode === 'not-supported' || errorCode === 'service-not-allowed') {
           if (latestRecognizedTextRef.current && latestRecognizedTextRef.current.trim().length > 0 && !hasAutoSentRef.current) {
             hasAutoSentRef.current = true;
@@ -527,7 +570,6 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
         recognitionRef.current = null;
         if (!hasAutoSentRef.current && latestRecognizedTextRef.current && latestRecognizedTextRef.current.trim().length > 0) {
           hasAutoSentRef.current = true;
-          perfRef.current.transcriptReady = Date.now();
           handleSendQuestion(latestRecognizedTextRef.current.trim());
         }
       }
@@ -538,9 +580,10 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
   };
 
   const handleStartVoice = async () => {
-    // If answer is currently streaming or speaking, tapping the mic button interrupts immediately
-    if (isStreaming || loading || VoiceAssistant.isQueueSpeaking) {
-      handleInterrupt();
+    // If speaking aloud, tapping mic stops speech immediately
+    if (speakingMsgIdx !== null || VoiceAssistant.isQueueSpeaking) {
+      VoiceAssistant.stopSpeaking();
+      setSpeakingMsgIdx(null);
       return;
     }
 
@@ -567,25 +610,19 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
       return;
     }
 
-    // Double-start protection
     if (isStartingRef.current) return;
     isStartingRef.current = true;
     setVoiceError('');
 
-    // Stop app's own spoken answer so mic doesn't pick it up
     VoiceAssistant.stopSpeaking();
+    setSpeakingMsgIdx(null);
 
-    // Check microphone permission without redundant getUserMedia when already granted
     let permissionGranted = false;
     if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
       try {
         const perm = await navigator.permissions.query({ name: 'microphone' });
-        if (perm.state === 'granted') {
-          permissionGranted = true;
-        }
-      } catch (e) {
-        // Some browsers throw on querying microphone permission
-      }
+        if (perm.state === 'granted') permissionGranted = true;
+      } catch (e) {}
     }
 
     if (!permissionGranted && navigator?.mediaDevices?.getUserMedia) {
@@ -600,7 +637,6 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
       }
     }
 
-    // Check if Web Speech Recognition is supported
     if (!VoiceAssistant.isSpeechSupported()) {
       isStartingRef.current = false;
       await startFallbackRecording();
@@ -610,328 +646,253 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
     startNativeSpeechRecognition();
   };
 
-  // Handles both text and transcribed voice queries
-  const handleSendQuestion = async (queryText = null, audioPayload = null) => {
+  // Handles text question submission
+  const handleSendQuestion = async (queryText = null) => {
     const textToSend = typeof queryText === 'string' ? queryText : question;
-    const hasAudio = Boolean(audioPayload?.audioBase64);
+    if (!textToSend || textToSend.trim().length === 0) return;
 
-    if (!hasAudio && (!textToSend || textToSend.trim().length === 0)) return;
+    VoiceAssistant.stopSpeaking();
+    setSpeakingMsgIdx(null);
 
-    // Previous turns give the AI context for follow-up questions
     const history = conversation
-      .filter((m) => m.timestamp !== 'Error' && m.text)
-      .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', text: m.text }));
+      .filter((m) => m.data && m.data.headline)
+      .slice(-6)
+      .map((m) => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        text: m.role === 'user' ? m.text : (m.data?.headline + '. ' + (m.data?.likelyCause || ''))
+      }));
 
-    const cleanQuestionText = textToSend ? textToSend.trim() : '';
-
+    const cleanQuestionText = textToSend.trim();
     const userMsg = {
       role: 'user',
       text: cleanQuestionText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    const assistantMsg = {
-      role: 'assistant',
-      text: '',
-      isThinking: true,
-      isStreaming: true,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    setConversation((prev) => [...prev, userMsg, assistantMsg]);
+    setConversation((prev) => [...prev, userMsg]);
     setQuestion('');
     setLoading(true);
-    setIsStreaming(true);
     setVoiceStatusText('');
 
-    perfRef.current.requestSent = Date.now();
-
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-
-    let incomingAccumulator = '';
-    let ttsSentenceBuffer = '';
-    let seenStructuredMarker = false;
-
     try {
-      await api.streamAgronomist({
-        question: hasAudio ? null : textToSend.trim(),
-        audioBase64: audioPayload?.audioBase64,
-        audioMimeType: audioPayload?.audioMimeType,
-        farmerId: activeProfile?.id || 1,
-        language: selectedLanguage,
-        history,
-        signal: abortController.signal,
+      const answer = await api.askAgronomist(
+        cleanQuestionText,
+        activeProfile?.id || 1,
+        selectedLanguage,
+        history
+      );
 
-        onTranscript: (liveTranscript) => {
-          if (DEBUG_PERF) console.log('⚡ [Stream] Audio transcript received:', liveTranscript);
-          // Update farmer's message bubble with transcribed words
-          setConversation((prev) => {
-            const next = [...prev];
-            const farmerIdx = next.length - 2;
-            if (farmerIdx >= 0 && next[farmerIdx].role === 'user') {
-              next[farmerIdx] = {
-                ...next[farmerIdx],
-                text: liveTranscript
-              };
-            }
-            return next;
-          });
-        },
+      const assistantMsg = {
+        role: 'assistant',
+        data: answer,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        ragContext: answer.retrievedContext
+      };
 
-        onChunk: (chunk) => {
-          if (!perfRef.current.firstChunk) {
-            perfRef.current.firstChunk = Date.now();
-          }
+      setConversation((prev) => [...prev, assistantMsg]);
 
-          incomingAccumulator += chunk;
-
-          // Strip any leading TRANSCRIPT: line from assistant bubble display
-          let displayText = incomingAccumulator;
-          if (displayText.startsWith('TRANSCRIPT:')) {
-            const nlIdx = displayText.indexOf('\n');
-            if (nlIdx !== -1) {
-              displayText = displayText.slice(nlIdx + 1).trimStart();
-            } else {
-              displayText = '';
-            }
-          }
-
-          // Cleanly format section markers so the full comprehensive answer streams live on screen
-          const formattedDisplay = displayText
-            .replace(/(?:###\s*)?===ACTIONS===\s*/g, selectedLanguage === 'mr' ? '\n\n📋 **तातडीने करावयाच्या कृती (Immediate Actions):**\n' : selectedLanguage === 'hi' ? '\n\n📋 **तत्काल करने योग्य कदम (Immediate Actions):**\n' : '\n\n📋 **Immediate Actions:**\n')
-            .replace(/(?:###\s*)?===ORGANIC===\s*/g, selectedLanguage === 'mr' ? '\n\n🌿 **सेंद्रिय/जैविक उपाय (Organic Treatment):**\n' : selectedLanguage === 'hi' ? '\n\n🌿 **जैविक उपचार (Organic Treatment):**\n' : '\n\n🌿 **Organic Treatment:**\n')
-            .replace(/(?:###\s*)?===CHEMICAL===\s*/g, selectedLanguage === 'mr' ? '\n\n🧪 **रासायनिक उपाय (Chemical Spray):**\n' : selectedLanguage === 'hi' ? '\n\n🧪 **रासायनिक उपचार (Chemical Spray):**\n' : '\n\n🧪 **Chemical Spray:**\n')
-            .replace(/(?:###\s*)?===TIP===\s*/g, selectedLanguage === 'mr' ? '\n\n💡 **महत्त्वाचा सल्ला (Expert Tip):**\n' : selectedLanguage === 'hi' ? '\n\n💡 **विशेषज्ञ सलाह (Expert Tip):**\n' : '\n\n💡 **Expert Tip:**\n');
-
-          // Update assistant text live in conversation
-          setConversation((prev) => {
-            const next = [...prev];
-            const lastIdx = next.length - 1;
-            if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
-              next[lastIdx] = {
-                ...next[lastIdx],
-                text: formattedDisplay,
-                isThinking: false,
-                isStreaming: true
-              };
-            }
-            return next;
-          });
-
-          // Queue completed sentences to TTS as they stream in
-          ttsSentenceBuffer += chunk;
-          // Discard any transcript prefix from TTS
-          if (ttsSentenceBuffer.startsWith('TRANSCRIPT:')) {
-            const nl = ttsSentenceBuffer.indexOf('\n');
-            if (nl !== -1) ttsSentenceBuffer = ttsSentenceBuffer.slice(nl + 1);
-            else return;
-          }
-
-          // Smoothly convert section markers to natural spoken cues so speech never stops midway
-          const spokenBuffer = ttsSentenceBuffer
-            .replace(/===ACTIONS===/g, selectedLanguage === 'mr' ? '. खालील कृती करा: ' : selectedLanguage === 'hi' ? '. तत्काल यह कदम उठाएं: ' : '. Immediate action steps: ')
-            .replace(/===ORGANIC===/g, selectedLanguage === 'mr' ? '. सेंद्रिय उपाय: ' : selectedLanguage === 'hi' ? '. जैविक उपचार: ' : '. Organic remedy: ')
-            .replace(/===CHEMICAL===/g, selectedLanguage === 'mr' ? '. रासायनिक उपाय: ' : selectedLanguage === 'hi' ? '. रासायनिक उपचार: ' : '. Chemical treatment: ')
-            .replace(/===TIP===/g, selectedLanguage === 'mr' ? '. कृषीतज्ज्ञांचा सल्ला: ' : selectedLanguage === 'hi' ? '. कृषि विशेषज्ञ सलाह: ' : '. Pro tip: ');
-
-          const { sentences, remainder } = extractSentences(spokenBuffer);
-          ttsSentenceBuffer = remainder;
-
-          for (const sentence of sentences) {
-            const clean = sentence.replace(/===[A-Z]+===/g, '').replace(/[*#_`]/g, '').trim();
-            if (clean) {
-              VoiceAssistant.enqueueSentence(clean, selectedLanguage, () => {
-                if (!perfRef.current.firstSentence) {
-                  perfRef.current.firstSentence = Date.now();
-                }
-              });
-            }
-          }
-        },
-
-        onDone: (result) => {
-          perfRef.current.answerComplete = Date.now();
-          perfRef.current.model = result?.model || '';
-
-          // If there's any remaining sentence fragment in the TTS buffer, speak it
-          if (ttsSentenceBuffer && ttsSentenceBuffer.trim()) {
-            const cleanTail = ttsSentenceBuffer
-              .replace(/===ACTIONS===/g, selectedLanguage === 'mr' ? '. खालील कृती करा: ' : selectedLanguage === 'hi' ? '. तत्काल यह कदम उठाएं: ' : '. Immediate action steps: ')
-              .replace(/===ORGANIC===/g, selectedLanguage === 'mr' ? '. सेंद्रिय उपाय: ' : selectedLanguage === 'hi' ? '. जैविक उपचार: ' : '. Organic remedy: ')
-              .replace(/===CHEMICAL===/g, selectedLanguage === 'mr' ? '. रासायनिक उपाय: ' : selectedLanguage === 'hi' ? '. रासायनिक उपचार: ' : '. Chemical treatment: ')
-              .replace(/===TIP===/g, selectedLanguage === 'mr' ? '. कृषीतज्ज्ञांचा सल्ला: ' : selectedLanguage === 'hi' ? '. कृषि विशेषज्ञ सलाह: ' : '. Pro tip: ')
-              .replace(/===[A-Z]+===/g, '')
-              .replace(/[*#_`]/g, '')
-              .trim();
-
-            if (cleanTail) {
-              VoiceAssistant.enqueueSentence(cleanTail, selectedLanguage, () => {
-                if (!perfRef.current.firstSentence) {
-                  perfRef.current.firstSentence = Date.now();
-                }
-              });
-            }
-          }
-
-          // Update conversation with full structured cards
-          setConversation((prev) => {
-            const next = [...prev];
-            // If transcript was extracted, confirm farmer bubble has it
-            if (result.transcript) {
-              const farmerIdx = next.length - 2;
-              if (farmerIdx >= 0 && next[farmerIdx].role === 'user') {
-                next[farmerIdx] = {
-                  ...next[farmerIdx],
-                  text: result.transcript
-                };
-              }
-            }
-
-            const lastIdx = next.length - 1;
-            if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
-              const baseText = result.fullText || incomingAccumulator || result.rootCause || '';
-              const fullCleanText = baseText
-                .replace(/^TRANSCRIPT:\s*.+\n*/m, '')
-                .replace(/(?:###\s*)?===ACTIONS===\s*/g, selectedLanguage === 'mr' ? '\n\n📋 **तातडीने करावयाच्या कृती (Immediate Actions):**\n' : selectedLanguage === 'hi' ? '\n\n📋 **तत्काल करने योग्य कदम (Immediate Actions):**\n' : '\n\n📋 **Immediate Actions:**\n')
-                .replace(/(?:###\s*)?===ORGANIC===\s*/g, selectedLanguage === 'mr' ? '\n\n🌿 **सेंद्रिय/जैविक उपाय (Organic Treatment):**\n' : selectedLanguage === 'hi' ? '\n\n🌿 **जैविक उपचार (Organic Treatment):**\n' : '\n\n🌿 **Organic Treatment:**\n')
-                .replace(/(?:###\s*)?===CHEMICAL===\s*/g, selectedLanguage === 'mr' ? '\n\n🧪 **रासायनिक उपाय (Chemical Spray):**\n' : selectedLanguage === 'hi' ? '\n\n🧪 **रासायनिक उपचार (Chemical Spray):**\n' : '\n\n🧪 **Chemical Spray:**\n')
-                .replace(/(?:###\s*)?===TIP===\s*/g, selectedLanguage === 'mr' ? '\n\n💡 **महत्त्वाचा सल्ला (Expert Tip):**\n' : selectedLanguage === 'hi' ? '\n\n💡 **विशेषज्ञ सलाह (Expert Tip):**\n' : '\n\n💡 **Expert Tip:**\n')
-                .trim();
-
-              next[lastIdx] = {
-                role: 'assistant',
-                text: fullCleanText || result.rootCause || result.audioReadoutText || incomingAccumulator,
-                immediateAction: result.immediateAction,
-                treatmentPlan: result.treatmentPlan,
-                farmerTip: result.farmerTip,
-                audioReadoutText: result.audioReadoutText || fullCleanText,
-                ragContext: result.retrievedContext,
-                knowledgeTopic: result.knowledgeTopic,
-                aiEngine: result.aiEngine,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                isThinking: false,
-                isStreaming: false
-              };
-            }
-            return next;
-          });
-
-          // Print one-line performance summary
-          if (DEBUG_PERF) {
-            const p = perfRef.current;
-            const micToEnd = p.lastSpeech && p.micStart ? `${p.lastSpeech - p.micStart}ms` : 'N/A';
-            const speechToReq = p.requestSent && p.lastSpeech ? `${p.requestSent - p.lastSpeech}ms` : 'N/A';
-            const reqToFirstChunk = p.firstChunk && p.requestSent ? `${p.firstChunk - p.requestSent}ms` : 'N/A';
-            const reqToTTS = p.firstSentence && p.requestSent ? `${p.firstSentence - p.requestSent}ms` : 'N/A';
-            const totalReq = p.answerComplete && p.requestSent ? `${p.answerComplete - p.requestSent}ms` : 'N/A';
-            console.log(`⚡ [PERF Summary] Mic->EndSpeech: ${micToEnd} | Speech->Req: ${speechToReq} | Req->FirstChunk: ${reqToFirstChunk} | Req->TTS: ${reqToTTS} | TotalReq: ${totalReq} | Model: ${p.model || 'Gemini'}`);
-          }
-
-          setIsStreaming(false);
-          setLoading(false);
-        },
-
-        onError: (err) => {
-          if (err?.name === 'AbortError') {
-            setConversation((prev) => {
-              const last = prev[prev.length - 1];
-              if (last && last.role === 'assistant' && (last.isThinking || !last.text)) {
-                return prev.slice(0, -1);
-              }
-              return prev;
-            });
-            setIsStreaming(false);
-            setLoading(false);
-            return;
-          }
-          console.error('Streaming error:', err);
-          setConversation((prev) => {
-            const next = [...prev];
-            const lastIdx = next.length - 1;
-            const errorText = err.message || (lang === 'hi' ? 'सर्वर से संपर्क नहीं हो पाया। कृपया पुनः प्रयास करें।' : lang === 'mr' ? 'सर्व्हरशी संपर्क होऊ शकला नाही. कृपया पुन्हा प्रयत्न करा.' : 'Unable to reach the server right now. Please try again.');
-            if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
-              next[lastIdx] = {
-                role: 'assistant',
-                text: errorText,
-                timestamp: 'Error',
-                isThinking: false,
-                isStreaming: false
-              };
-            }
-            return next;
-          });
-          setIsStreaming(false);
-          setLoading(false);
-        }
-      });
-    } catch (e) {
-      if (e?.name === 'AbortError') {
-        setConversation((prev) => {
-          const last = prev[prev.length - 1];
-          if (last && last.role === 'assistant' && (last.isThinking || !last.text)) {
-            return prev.slice(0, -1);
-          }
-          return prev;
+      // Automatically speak read-aloud text if desired or keep ready
+      if (answer?.speakText) {
+        // Auto-play spoken headline + key steps
+        const newIdx = conversation.length + 1;
+        setSpeakingMsgIdx(newIdx);
+        VoiceAssistant.speak(answer.speakText, selectedLanguage, () => {
+          setSpeakingMsgIdx(null);
         });
-        setIsStreaming(false);
-        setLoading(false);
-        return;
       }
-      setConversation((prev) => {
-        const next = [...prev];
-        const lastIdx = next.length - 1;
-        const errorText = e.message || (lang === 'hi' ? 'सर्वर से संपर्क नहीं हो पाया। कृपया पुनः प्रयास करें।' : lang === 'mr' ? 'सर्व्हरशी संपर्क होऊ शकला नाही. कृपया पुन्हा प्रयत्न करा.' : 'Unable to reach the server right now. Please try again.');
-        if (lastIdx >= 0 && next[lastIdx].role === 'assistant') {
-          next[lastIdx] = {
-            role: 'assistant',
-            text: errorText,
-            timestamp: 'Error',
-            isThinking: false,
-            isStreaming: false
-          };
-          return next;
-        }
-        return [...next, { role: 'assistant', text: errorText, timestamp: 'Error' }];
-      });
-      setIsStreaming(false);
-      setLoading(false);
+    } catch (err) {
+      console.error('Agronomist consultation error:', err);
+      const errorMsg = {
+        role: 'assistant',
+        data: {
+          intent: 'general',
+          headline: selectedLanguage === 'mr' ? 'सर्व्हरशी संपर्क होऊ शकला नाही' : selectedLanguage === 'hi' ? 'सर्वर से संपर्क नहीं हो पाया' : 'Could not reach agronomist service',
+          likelyCause: err.message || 'Please check your connection and try again.',
+          confidence: 'low',
+          steps: ['Please retry in a few moments.'],
+          treatment: null,
+          priceInfo: null,
+          weatherNote: '',
+          askBack: '',
+          appAction: 'none',
+          followUps: [],
+          speakText: selectedLanguage === 'mr' ? 'सर्व्हरशी संपर्क होऊ शकला नाही. कृपया पुन्हा प्रयत्न करा.' : 'Could not reach server. Please try again.'
+        },
+        timestamp: 'Error'
+      };
+      setConversation((prev) => [...prev, errorMsg]);
     } finally {
-      setIsStreaming(false);
       setLoading(false);
     }
   };
 
+  // Handles one-request voice ask (transcribe + answer) from MediaRecorder fallback
+  const handleSendVoiceQuestion = async (audioBase64, mimeType) => {
+    VoiceAssistant.stopSpeaking();
+    setSpeakingMsgIdx(null);
+    setLoading(true);
+
+    // Placeholder user message showing "Recording voice..."
+    const pendingUserIdx = conversation.length;
+    const tempUserMsg = {
+      role: 'user',
+      text: selectedLanguage === 'mr' ? '🎙️ आवाज पाठवत आहे...' : selectedLanguage === 'hi' ? '🎙️ आवाज़ भेजी जा रही है...' : '🎙️ Transcribing voice...',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setConversation((prev) => [...prev, tempUserMsg]);
+
+    const history = conversation
+      .filter((m) => m.data && m.data.headline)
+      .slice(-6)
+      .map((m) => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        text: m.role === 'user' ? m.text : (m.data?.headline + '. ' + (m.data?.likelyCause || ''))
+      }));
+
+    try {
+      const res = await api.askAgronomistVoice({
+        audioBase64,
+        mimeType,
+        farmerId: activeProfile?.id || 1,
+        language: selectedLanguage,
+        history
+      });
+
+      const transcript = res?.transcript || res?.data?.transcript || '';
+      const answer = res?.answer || res?.data?.answer || res;
+
+      // Update farmer's message bubble with the recognized transcript
+      setConversation((prev) => {
+        const next = [...prev];
+        if (next[pendingUserIdx]) {
+          next[pendingUserIdx] = {
+            ...next[pendingUserIdx],
+            text: transcript || (selectedLanguage === 'mr' ? 'शेतकऱ्याचा ऑडिओ प्रश्न' : 'Farmer voice question')
+          };
+        }
+        const assistantMsg = {
+          role: 'assistant',
+          data: answer,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          ragContext: answer?.retrievedContext
+        };
+        return [...next, assistantMsg];
+      });
+
+      if (answer?.speakText) {
+        const newIdx = pendingUserIdx + 1;
+        setSpeakingMsgIdx(newIdx);
+        VoiceAssistant.speak(answer.speakText, selectedLanguage, () => {
+          setSpeakingMsgIdx(null);
+        });
+      }
+    } catch (err) {
+      console.error('Voice ask error:', err);
+      setVoiceError(err.message || 'Voice consultation failed');
+      setConversation((prev) => {
+        const next = [...prev];
+        next.pop(); // remove pending user bubble
+        return next;
+      });
+    } finally {
+      setLoading(false);
+      setVoiceStatusText('');
+    }
+  };
+
+  // Navigates to appropriate feature based on appAction
+  const handleAppActionClick = (action) => {
+    if (!onNavigate) return;
+    if (action === 'disease_scan') {
+      onNavigate('disease-scan');
+    } else if (action === 'smart_mandi') {
+      onNavigate('smart-mandi', { crop: activeProfile?.currentCrop || 'Tomato' });
+    } else if (action === 'crop_advisor') {
+      onNavigate('crop-advisor');
+    } else if (action === 'schemes') {
+      onNavigate('schemes');
+    } else if (action === 'weather') {
+      onNavigate('weather-alerts');
+    }
+  };
+
+  // Confidence chip styling
+  const renderConfidenceBadge = (confidence) => {
+    const c = (confidence || 'medium').toLowerCase();
+    const config = {
+      high: {
+        bg: '#EAF5EC',
+        color: '#1B5E20',
+        border: '#C8E6C9',
+        label: selectedLanguage === 'mr' ? 'उच्च खात्री' : selectedLanguage === 'hi' ? 'उच्च विश्वास' : 'High Confidence'
+      },
+      medium: {
+        bg: '#FFF8E1',
+        color: '#B78103',
+        border: '#FFE082',
+        label: selectedLanguage === 'mr' ? 'मध्यम खात्री' : selectedLanguage === 'hi' ? 'मध्यम विश्वास' : 'Medium Confidence'
+      },
+      low: {
+        bg: '#FBE9E7',
+        color: '#D84315',
+        border: '#FFCCBC',
+        label: selectedLanguage === 'mr' ? 'कमी खात्री (तपासा)' : selectedLanguage === 'hi' ? 'कम विश्वास (पुष्टि करें)' : 'Low Confidence'
+      }
+    };
+    const style = config[c] || config.medium;
+    return (
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '4px',
+          padding: '2px 8px',
+          borderRadius: '999px',
+          fontSize: '0.72rem',
+          fontWeight: 700,
+          backgroundColor: style.bg,
+          color: style.color,
+          border: `1px solid ${style.border}`,
+          textTransform: 'uppercase',
+          letterSpacing: '0.04em'
+        }}
+      >
+        <ShieldCheck size={11} />
+        {style.label}
+      </span>
+    );
+  };
+
   return (
-    <div className="container" style={{ padding: '36px var(--space-md) 64px var(--space-md)' }}>
+    <div className="container" style={{ padding: '24px 16px 64px 16px', maxWidth: '880px', margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ maxWidth: '800px', marginBottom: '24px' }}>
+      <div style={{ marginBottom: '16px' }}>
         <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-primary-forest)', fontWeight: 700 }}>
           {t.agronomist.phase}
         </span>
-        <h1 style={{ marginTop: '4px', marginBottom: '8px', color: 'var(--color-primary-forest)' }}>
+        <h1 style={{ marginTop: '4px', marginBottom: '6px', color: 'var(--color-primary-forest)', fontSize: 'clamp(1.5rem, 3.5vw, 2rem)' }}>
           {t.agronomist.title}
         </h1>
-        <p style={{ fontSize: '1rem', color: 'var(--color-text-muted)' }}>
+        <p style={{ fontSize: '0.95rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
           {t.agronomist.subtitle}
         </p>
       </div>
 
       {/* Language Toggle */}
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '20px' }}>
-        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
-          {lang === 'hi' ? 'संवाद भाषा:' : lang === 'mr' ? 'संवाद भाषा:' : 'Interaction Language:'}
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+          {lang === 'hi' ? 'संवाद भाषा:' : lang === 'mr' ? 'संवाद भाषा:' : 'Language:'}
         </span>
         {[
-          { code: 'mr', label: 'मराठी (Marathi)' },
-          { code: 'hi', label: 'हिन्दी (Hindi)' },
+          { code: 'mr', label: 'मराठी' },
+          { code: 'hi', label: 'हिन्दी' },
           { code: 'en', label: 'English' }
         ].map((l) => (
           <button
             key={l.code}
             type="button"
             className={`btn btn-sm ${selectedLanguage === l.code ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ minHeight: '34px', padding: '0 12px', fontSize: '0.8rem' }}
+            style={{ minHeight: '32px', padding: '0 12px', fontSize: '0.8rem', borderRadius: '999px' }}
             onClick={() => setSelectedLanguage(l.code)}
           >
             {l.label}
@@ -939,92 +900,93 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
         ))}
       </div>
 
-      {/* MAIN VOICE INTERACTION HERO CARD */}
-      <div style={{
-        backgroundColor: '#FFFFFF',
-        borderRadius: 'var(--radius-lg)',
-        border: '1.5px solid var(--color-border-subtle)',
-        padding: '36px 24px',
-        textAlign: 'center',
-        boxShadow: 'var(--shadow-md)',
-        marginBottom: '32px'
-      }}>
-        <div style={{ fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-leaf-green)', fontWeight: 700, marginBottom: '8px' }}>
+      {/* HERO VOICE INTERACTION CARD */}
+      <div
+        style={{
+          backgroundColor: '#FFFFFF',
+          borderRadius: 'var(--radius-lg)',
+          border: '1.5px solid var(--color-border-subtle)',
+          padding: '24px 16px',
+          textAlign: 'center',
+          boxShadow: 'var(--shadow-sm)',
+          marginBottom: '24px'
+        }}
+      >
+        <div style={{ fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-leaf-green)', fontWeight: 700, marginBottom: '6px' }}>
           {t.agronomist.tapToSpeak} ({selectedLanguage === 'mr' ? 'मराठी' : (selectedLanguage === 'hi' ? 'हिन्दी' : 'English')})
         </div>
-        <h2 style={{ fontSize: 'clamp(1.5rem, 3vw, 2.1rem)', color: 'var(--color-primary-forest)', marginBottom: '24px' }}>
-          {lang === 'hi' ? '"अपने खेत की समस्या बताएं या सवाल पूछें"' : lang === 'mr' ? '"तुमच्या शेतातील समस्या सांगा किंवा प्रश्न विचारा"' : '"Tell me what is happening in your field."'}
+        <h2 style={{ fontSize: 'clamp(1.15rem, 2.8vw, 1.5rem)', color: 'var(--color-primary-forest)', marginBottom: '16px', fontWeight: 700 }}>
+          {lang === 'hi' ? '"खेत की समस्या बताएं या माइक दबाएं"' : lang === 'mr' ? '"शेतातील समस्या सांगा किंवा माइक दाबा"' : '"Tell me what is happening in your field"'}
         </h2>
 
-        {/* Big Ripple Microphone Button */}
-        <div className="voice-mic-container">
+        {/* Big Mic Button */}
+        <div className="voice-mic-container" style={{ margin: '12px auto' }}>
           <button
             type="button"
-            className={`voice-mic-button ${isRecording ? 'recording' : ''} ${isStreaming ? 'streaming' : ''}`}
+            className={`voice-mic-button ${isRecording ? 'recording' : ''}`}
             onClick={handleStartVoice}
-            aria-label={
-              isStreaming
-                ? 'Stop reading answer'
-                : isRecording
-                ? t.agronomist.stopListening
-                : t.agronomist.tapToSpeak
-            }
+            aria-label={isRecording ? t.agronomist.stopListening : t.agronomist.tapToSpeak}
             style={{
-              backgroundColor: isStreaming ? '#DC2626' : undefined,
-              borderColor: isStreaming ? '#B91C1C' : undefined
+              width: '74px',
+              height: '74px',
+              backgroundColor: speakingMsgIdx !== null ? '#DC2626' : undefined,
+              borderColor: speakingMsgIdx !== null ? '#B91C1C' : undefined
             }}
           >
-            {isStreaming ? (
-              <Square size={32} color="#FFFFFF" fill="#FFFFFF" />
+            {speakingMsgIdx !== null ? (
+              <Square size={28} color="#FFFFFF" fill="#FFFFFF" />
             ) : isRecording ? (
-              <MicOff size={36} />
+              <MicOff size={32} />
             ) : (
-              <Mic size={36} />
+              <Mic size={32} />
             )}
           </button>
 
-          <div style={{ fontSize: '0.9rem', fontWeight: 600, color: isRecording ? 'var(--color-terracotta)' : isStreaming ? '#DC2626' : 'var(--color-text-muted)' }}>
-            {isStreaming
-              ? (selectedLanguage === 'mr' ? '⏹️ बोलणे थांबवण्यासाठी दाबा (Tap to stop)' : (selectedLanguage === 'hi' ? '⏹️ बोलना रोकने के लिए दबाएं (Tap to stop)' : '⏹️ Tap to stop reading'))
+          <div style={{ fontSize: '0.85rem', fontWeight: 600, marginTop: '8px', color: isRecording ? 'var(--color-terracotta)' : speakingMsgIdx !== null ? '#DC2626' : 'var(--color-text-muted)' }}>
+            {speakingMsgIdx !== null
+              ? (selectedLanguage === 'mr' ? '⏹️ बोलणे थांबवण्यासाठी दाबा (Tap to stop)' : (selectedLanguage === 'hi' ? '⏹️ बोलना रोकने के लिए दबाएं' : '⏹️ Tap to stop reading'))
               : voiceStatusText || (isRecording ? `🔴 ${t.agronomist.listening}` : t.agronomist.tapToSpeak)}
           </div>
 
-          {/* Visible STT Error Message */}
+          {/* Voice Error Notice */}
           {voiceError && (
-            <div style={{
-              marginTop: '12px',
-              padding: '10px 16px',
-              backgroundColor: '#FEF2F2',
-              border: '1px solid #FCA5A5',
-              borderRadius: '8px',
-              color: '#B91C1C',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              maxWidth: '560px',
-              margin: '12px auto 0 auto',
-              lineHeight: 1.5,
-              textAlign: 'center'
-            }}>
+            <div
+              style={{
+                marginTop: '10px',
+                padding: '8px 12px',
+                backgroundColor: '#FEF2F2',
+                border: '1px solid #FCA5A5',
+                borderRadius: '8px',
+                color: '#B91C1C',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                maxWidth: '520px',
+                margin: '10px auto 0 auto',
+                lineHeight: 1.4,
+                textAlign: 'center'
+              }}
+            >
               ⚠️ {voiceError}
             </div>
           )}
         </div>
 
-        {/* Input Text Box with Send Button */}
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-          maxWidth: '680px',
-          margin: '0 auto',
-          position: 'relative'
-        }}>
+        {/* Text Input with Send */}
+        <div
+          style={{
+            display: 'flex',
+            gap: '8px',
+            maxWidth: '640px',
+            margin: '12px auto 0 auto'
+          }}
+        >
           <input
             type="text"
             placeholder={
               selectedLanguage === 'mr'
-                ? 'किंवा येथे प्रश्न टाइप करा (उदा. टोमॅटो पाने पिवळी का पडत आहेत?)'
+                ? 'किंवा येथे प्रश्न टाइप करा (उदा. टोमॅटो पाने पिवळी पडत आहेत)'
                 : (selectedLanguage === 'hi'
-                  ? 'या यहाँ सवाल टाइप करें (उदा. टमाटर के पत्ते पीले क्यों पड़ रहे हैं?)'
+                  ? 'या यहाँ सवाल टाइप करें (उदा. टमाटर के पत्ते पीले पड़ रहे हैं)'
                   : 'Or type your question here...')
             }
             value={question}
@@ -1032,10 +994,10 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
             onKeyDown={(e) => { if (e.key === 'Enter') handleSendQuestion(); }}
             style={{
               flex: 1,
-              padding: '14px 18px',
+              padding: '12px 16px',
               borderRadius: 'var(--radius-md)',
               border: '1.5px solid var(--color-border-strong)',
-              fontSize: '1rem',
+              fontSize: '0.95rem',
               backgroundColor: 'var(--color-canvas-surface)'
             }}
           />
@@ -1044,14 +1006,15 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
             className="btn btn-primary"
             onClick={() => handleSendQuestion()}
             disabled={!question.trim() || loading}
-            style={{ minHeight: '50px', padding: '0 22px' }}
+            style={{ minHeight: '46px', padding: '0 20px', borderRadius: 'var(--radius-md)' }}
+            aria-label="Send query"
           >
             <Send size={18} />
           </button>
         </div>
 
         {/* Quick Suggestion Chips */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', marginTop: '20px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px', marginTop: '14px' }}>
           {promptSuggestions.map((s, idx) => {
             const promptText = selectedLanguage === 'mr' ? s.mr : (selectedLanguage === 'hi' ? s.hi : s.en);
             return (
@@ -1063,11 +1026,11 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
                   handleSendQuestion(promptText);
                 }}
                 style={{
-                  padding: '6px 14px',
+                  padding: '5px 12px',
                   borderRadius: 'var(--radius-pill)',
                   background: 'var(--color-canvas-surface)',
                   border: '1px solid var(--color-border-subtle)',
-                  fontSize: '0.8rem',
+                  fontSize: '0.76rem',
                   color: 'var(--color-primary-forest)',
                   cursor: 'pointer',
                   fontWeight: 600
@@ -1080,125 +1043,503 @@ export function AiAgronomistPage({ activeProfile, lang, onNavigate }) {
         </div>
       </div>
 
-      {/* CONVERSATION STREAM */}
-      <div style={{ maxWidth: '860px', margin: '0 auto' }}>
-        <h3 style={{ fontSize: '1.25rem', marginBottom: '16px', color: 'var(--color-primary-forest)' }}>
-          {lang === 'hi' ? 'कृषि परामर्श संवाद' : lang === 'mr' ? 'कृषी सल्लागार संवाद' : 'Agronomic Consultations'}
-        </h3>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {conversation.map((msg, idx) => {
-            const isFarmer = msg.role === 'user';
+      {/* CONVERSATION CARDS */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {conversation.map((msg, idx) => {
+          const isFarmer = msg.role === 'user';
+          if (isFarmer) {
             return (
               <div
                 key={idx}
                 style={{
-                  backgroundColor: isFarmer ? 'var(--color-canvas-surface)' : '#FFFFFF',
-                  border: '1.5px solid var(--color-border-subtle)',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '24px',
+                  alignSelf: 'flex-end',
+                  maxWidth: '85%',
+                  backgroundColor: 'var(--color-leaf-light)',
+                  border: '1px solid #D2E4D4',
+                  borderRadius: '16px 16px 4px 16px',
+                  padding: '12px 16px',
                   boxShadow: 'var(--shadow-sm)'
                 }}
               >
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{
-                      padding: '6px',
-                      borderRadius: '50%',
-                      background: isFarmer ? 'var(--color-primary-forest)' : 'var(--color-leaf-light)',
-                      color: isFarmer ? '#FFFFFF' : 'var(--color-leaf-green)'
-                    }}>
-                      {isFarmer ? '👨🏽‍🌾' : <Sprout size={18} />}
-                    </div>
-                    <strong style={{ fontSize: '0.95rem', color: 'var(--color-primary-forest)' }}>
-                      {isFarmer ? activeProfile?.fullName || (lang === 'hi' ? 'किसान भाई' : lang === 'mr' ? 'शेतकरी' : 'Farmer') : (lang === 'hi' ? 'एआई कृषि मित्र' : lang === 'mr' ? 'एआय कृषी मित्र' : 'AI Agronomist (Kisan Mitra)')}
-                    </strong>
-                  </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-primary-forest)' }}>
+                    👨🏽‍🌾 {activeProfile?.fullName || (lang === 'hi' ? 'किसान भाई' : lang === 'mr' ? 'शेतकरी' : 'Farmer')}
+                  </span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{msg.timestamp}</span>
+                </div>
+                <div style={{ fontSize: '0.95rem', color: 'var(--color-text-main)', fontWeight: 500, lineHeight: 1.4 }}>
+                  {msg.text}
+                </div>
+              </div>
+            );
+          }
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{msg.timestamp}</span>
-                    {!isFarmer && !msg.isStreaming && msg.audioReadoutText && (
-                      <AudioSpeaker text={msg.audioReadoutText} lang={selectedLanguage} label={lang === 'hi' ? 'सुनें' : lang === 'mr' ? 'ऐका' : 'Listen'} />
-                    )}
+          // ASSISTANT AGRONOMIST CARD (Structured JSON)
+          const data = msg.data || {};
+          const isExpanded = Boolean(expandedDetails[idx]);
+          const hasTreatment = Boolean(data.treatment && (data.treatment.organic || data.treatment.chemical));
+          const hasPrice = Boolean(data.priceInfo && data.priceInfo.modalPrice);
+          const hasWeather = Boolean(data.weatherNote && data.weatherNote.trim());
+          const hasAskBack = Boolean(data.askBack && data.askBack.trim());
+          const hasAction = Boolean(data.appAction && data.appAction !== 'none');
+          const isSpeakingThis = speakingMsgIdx === idx;
+
+          return (
+            <div
+              key={idx}
+              style={{
+                backgroundColor: '#FFFFFF',
+                border: '1.5px solid var(--color-border-subtle)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '20px',
+                boxShadow: 'var(--shadow-sm)'
+              }}
+            >
+              {/* Header row: Krishi Mitra avatar, time, Listen button, confidence chip */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '12px',
+                  flexWrap: 'wrap',
+                  gap: '8px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      background: 'var(--color-leaf-light)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--color-leaf-green)'
+                    }}
+                  >
+                    <Sprout size={18} />
+                  </div>
+                  <div>
+                    <strong style={{ fontSize: '0.92rem', color: 'var(--color-primary-forest)', display: 'block', lineHeight: 1.2 }}>
+                      {selectedLanguage === 'mr' ? 'कृषी मित्र' : selectedLanguage === 'hi' ? 'कृषि मित्र' : 'Krishi Mitra'}
+                    </strong>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>{msg.timestamp}</span>
                   </div>
                 </div>
 
-                {/* Body / Thinking state */}
-                {msg.isThinking ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--color-leaf-green)', fontSize: '0.95rem', fontWeight: 600 }}>
-                    <Sparkles size={18} className="animate-spin" />
-                    <span>
-                      {selectedLanguage === 'mr' ? 'कृषी सल्लागार विचार करत आहे...' : (selectedLanguage === 'hi' ? 'कृषि मित्र सोच रहा है...' : 'AI Agronomist is thinking…')}
-                    </span>
-                  </div>
-                ) : (
-                  <p style={{ fontSize: '1rem', lineHeight: 1.6, color: 'var(--color-text-main)', whiteSpace: 'pre-wrap', marginBottom: msg.immediateAction ? '16px' : '0' }}>
-                    {msg.text}
-                    {msg.isStreaming && <span style={{ display: 'inline-block', width: '8px', height: '14px', backgroundColor: 'var(--color-leaf-green)', marginLeft: '4px', verticalAlign: 'baseline', animation: 'blink 1s infinite' }}></span>}
-                  </p>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {renderConfidenceBadge(data.confidence)}
+                  {data.speakText && (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSpeak(idx, data.speakText)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '4px 10px',
+                        borderRadius: '999px',
+                        border: isSpeakingThis ? '1px solid #EF4444' : '1px solid var(--color-border-subtle)',
+                        backgroundColor: isSpeakingThis ? '#FEE2E2' : 'var(--color-canvas-surface)',
+                        color: isSpeakingThis ? '#DC2626' : 'var(--color-primary-forest)',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                      aria-label="Read aloud"
+                    >
+                      {isSpeakingThis ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                      <span>
+                        {isSpeakingThis
+                          ? (selectedLanguage === 'mr' ? 'थांबवा' : selectedLanguage === 'hi' ? 'रोकें' : 'Stop')
+                          : (selectedLanguage === 'mr' ? 'ऐका' : selectedLanguage === 'hi' ? 'सुनें' : 'Listen')}
+                      </span>
+                    </button>
+                  )}
+                </div>
+              </div>
 
-                {/* Structured Action Plan Cards */}
-                {msg.immediateAction && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px', marginTop: '16px' }}>
-                    <strong style={{ fontSize: '0.88rem', color: 'var(--color-primary-forest)' }}>
-                      🚨 {t.agronomist.treatment}:
-                    </strong>
-                    {msg.immediateAction.map((step, sIdx) => (
-                      <div key={sIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '0.88rem' }}>
-                        <CheckCircle2 size={16} color="var(--color-leaf-green)" style={{ flexShrink: 0, marginTop: '3px' }} />
-                        <span>{step}</span>
+              {/* Headline in bold, 1.15rem */}
+              <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--color-primary-forest)', marginBottom: '4px', lineHeight: 1.3 }}>
+                {data.headline}
+              </div>
+
+              {/* Likely cause line in muted text */}
+              {data.likelyCause && (
+                <div style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)', marginBottom: '14px', lineHeight: 1.4 }}>
+                  {data.likelyCause}
+                </div>
+              )}
+
+              {/* AskBack highlighted question card */}
+              {hasAskBack && (
+                <div
+                  style={{
+                    backgroundColor: '#FEF9C3',
+                    border: '1.5px solid #FDE047',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '12px 14px',
+                    marginBottom: '14px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <HelpCircle size={18} color="#A16207" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <div style={{ flex: 1 }}>
+                      <strong style={{ fontSize: '0.85rem', color: '#854D0E', display: 'block', marginBottom: '2px' }}>
+                        {selectedLanguage === 'mr' ? 'कृपया स्पष्ट करा:' : selectedLanguage === 'hi' ? 'कृपया स्पष्ट करें:' : 'Please clarify:'}
+                      </strong>
+                      <div style={{ fontSize: '0.9rem', color: '#713F12', fontWeight: 600 }}>
+                        {data.askBack}
                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* What to do now: interactive numbered checklist */}
+              {Array.isArray(data.steps) && data.steps.length > 0 && (
+                <div style={{ marginBottom: '14px' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary-forest)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    📋 {selectedLanguage === 'mr' ? 'आत्ता काय करावे (कृती):' : selectedLanguage === 'hi' ? 'अभी क्या करें (कदम):' : 'What to do now:'}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {data.steps.map((step, sIdx) => {
+                      const stepKey = `${idx}-${sIdx}`;
+                      const isDone = checkedSteps.has(stepKey);
+                      return (
+                        <div
+                          key={sIdx}
+                          onClick={() => toggleStepCheck(stepKey)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '10px',
+                            padding: '8px 12px',
+                            backgroundColor: isDone ? '#F0FDF4' : 'var(--color-canvas-surface)',
+                            border: `1px solid ${isDone ? '#86EFAC' : 'var(--color-border-subtle)'}`,
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <div style={{ marginTop: '2px', color: isDone ? '#16A34A' : '#9CA3AF' }}>
+                            {isDone ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                          </div>
+                          <div style={{ flex: 1, fontSize: '0.9rem', color: isDone ? '#4B5563' : 'var(--color-text-main)', textDecoration: isDone ? 'line-through' : 'none', lineHeight: 1.4 }}>
+                            <strong style={{ marginRight: '6px', color: isDone ? '#9CA3AF' : 'var(--color-primary-forest)' }}>
+                              {sIdx + 1}.
+                            </strong>
+                            {step}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Collapsible toggle for deep treatment or additional info */}
+              {hasTreatment && (
+                <div style={{ marginBottom: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleDetails(idx)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--color-leaf-green)',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      padding: '4px 0'
+                    }}
+                  >
+                    <span>
+                      {isExpanded
+                        ? (selectedLanguage === 'mr' ? 'उपचार तपशील लपवा' : selectedLanguage === 'hi' ? 'उपचार विवरण छुपाएं' : 'Hide Treatment Details')
+                        : (selectedLanguage === 'mr' ? '🌿 औषध व उपचार तपशील पहा' : selectedLanguage === 'hi' ? '🌿 दवा और उपचार विवरण देखें' : '🌿 View Treatment & Dose Details')}
+                    </span>
+                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </button>
+                </div>
+              )}
+
+              {/* Treatment card: side-by-side tiles (shown if expanded or short view) */}
+              {hasTreatment && (isExpanded || !data.steps || data.steps.length <= 2) && (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                    gap: '12px',
+                    marginBottom: '14px'
+                  }}
+                >
+                  {/* Organic tile */}
+                  {data.treatment.organic && (
+                    <div
+                      style={{
+                        padding: '12px 14px',
+                        backgroundColor: '#F0FDF4',
+                        border: '1px solid #BBF7D0',
+                        borderRadius: 'var(--radius-md)'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#166534', fontWeight: 800, marginBottom: '4px' }}>
+                        🌿 {selectedLanguage === 'mr' ? 'सेंद्रिय उपाय (प्रथम वापरा)' : selectedLanguage === 'hi' ? 'जैविक उपचार (पहले आजमाएं)' : 'Organic (Try first)'}
+                      </div>
+                      <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#14532D', marginBottom: '4px' }}>
+                        {data.treatment.organic.name}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#166534', lineHeight: 1.4 }}>
+                        {data.treatment.organic.dosePerLitre && (
+                          <div>• <strong>{selectedLanguage === 'mr' ? '15 लिटर पंप:' : selectedLanguage === 'hi' ? '15 ली. पंप:' : '15L pump:'}</strong> {data.treatment.organic.dosePerLitre}</div>
+                        )}
+                        {data.treatment.organic.dosePerAcre && (
+                          <div>• <strong>{selectedLanguage === 'mr' ? 'प्रति एकर:' : selectedLanguage === 'hi' ? 'प्रति एकड़:' : 'Per acre:'}</strong> {data.treatment.organic.dosePerAcre}</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Chemical tile */}
+                  {data.treatment.chemical && (
+                    <div
+                      style={{
+                        padding: '12px 14px',
+                        backgroundColor: '#FFFBEB',
+                        border: '1px solid #FDE68A',
+                        borderRadius: 'var(--radius-md)'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#92400E', fontWeight: 800, marginBottom: '4px' }}>
+                        🧪 {selectedLanguage === 'mr' ? 'रासायनिक फवारणी (CIB&RC)' : selectedLanguage === 'hi' ? 'रासायनिक छिड़काव' : 'Chemical (CIB&RC Approved)'}
+                      </div>
+                      <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#78350F' }}>
+                        {data.treatment.chemical.product}
+                      </div>
+                      {data.treatment.chemical.activeIngredient && (
+                        <div style={{ fontSize: '0.75rem', color: '#92400E', fontStyle: 'italic', marginBottom: '4px' }}>
+                          ({data.treatment.chemical.activeIngredient})
+                        </div>
+                      )}
+                      <div style={{ fontSize: '0.8rem', color: '#78350F', lineHeight: 1.4 }}>
+                        {data.treatment.chemical.dosePerLitre && (
+                          <div>• <strong>{selectedLanguage === 'mr' ? '15 लिटर पंप:' : selectedLanguage === 'hi' ? '15 ली. पंप:' : '15L pump:'}</strong> {data.treatment.chemical.dosePerLitre}</div>
+                        )}
+                        {data.treatment.chemical.dosePerAcre && (
+                          <div>• <strong>{selectedLanguage === 'mr' ? 'प्रति एकर:' : selectedLanguage === 'hi' ? 'प्रति एकड़:' : 'Per acre:'}</strong> {data.treatment.chemical.dosePerAcre}</div>
+                        )}
+                        {data.treatment.chemical.waitDaysBeforeHarvest && (
+                          <div>• <strong>{selectedLanguage === 'mr' ? 'काढणी अंतर (PHI):' : selectedLanguage === 'hi' ? 'तुड़ाई अंतर:' : 'Wait days:'}</strong> {data.treatment.chemical.waitDaysBeforeHarvest}</div>
+                        )}
+                      </div>
+                      {data.treatment.chemical.safety && (
+                        <div style={{ marginTop: '6px', fontSize: '0.75rem', color: '#B45309', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <AlertTriangle size={13} style={{ flexShrink: 0 }} />
+                          <span>{data.treatment.chemical.safety}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Price card (only for market_price) */}
+              {hasPrice && (
+                <div
+                  style={{
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '12px 14px',
+                    marginBottom: '14px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '10px'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700 }}>
+                      📊 {data.priceInfo.mandi || 'APMC'}
+                    </div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-primary-forest)' }}>
+                      {data.priceInfo.modalPrice?.startsWith('₹') ? data.priceInfo.modalPrice : `₹${data.priceInfo.modalPrice}`}
+                      <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--color-text-muted)', marginLeft: '4px' }}>/ quintal</span>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                      {data.priceInfo.date ? `Date: ${data.priceInfo.date}` : ''}
+                      {data.priceInfo.comparedToMsp ? ` • ${data.priceInfo.comparedToMsp}` : ''}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => onNavigate && onNavigate('smart-mandi', { crop: activeProfile?.currentCrop })}
+                    style={{ fontSize: '0.8rem', padding: '6px 12px' }}
+                  >
+                    <TrendingUp size={14} />
+                    <span>{selectedLanguage === 'mr' ? 'स्मार्ट बाजारभाव उघडा' : selectedLanguage === 'hi' ? 'स्मार्ट मंडी खोलें' : 'Open Smart Mandi'}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Weather Note strip */}
+              {hasWeather && (
+                <div
+                  style={{
+                    backgroundColor: '#EFF6FF',
+                    border: '1px solid #BFDBFE',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    fontSize: '0.82rem',
+                    color: '#1E40AF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: '14px'
+                  }}
+                >
+                  <CloudSun size={16} color="#2563EB" style={{ flexShrink: 0 }} />
+                  <span>{data.weatherNote}</span>
+                </div>
+              )}
+
+              {/* appAction button */}
+              {hasAction && (
+                <div style={{ marginBottom: '14px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => handleAppActionClick(data.appAction)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 16px',
+                      fontSize: '0.9rem',
+                      fontWeight: 700,
+                      borderRadius: 'var(--radius-md)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    {data.appAction === 'disease_scan' && (
+                      <>
+                        <Camera size={18} />
+                        <span>{selectedLanguage === 'mr' ? '📷 रोगाची खात्री करण्यासाठी फोटो स्कॅन करा' : selectedLanguage === 'hi' ? '📷 रोग की पुष्टि के लिए फोटो स्कैन करें' : '📷 Confirm with Disease Scan'}</span>
+                      </>
+                    )}
+                    {data.appAction === 'smart_mandi' && (
+                      <>
+                        <TrendingUp size={18} />
+                        <span>{selectedLanguage === 'mr' ? '📊 स्मार्ट बाजारभाव पहा' : selectedLanguage === 'hi' ? '📊 स्मार्ट मंडी देखें' : '📊 Open Smart Mandi'}</span>
+                      </>
+                    )}
+                    {data.appAction === 'crop_advisor' && (
+                      <>
+                        <Layers size={18} />
+                        <span>{selectedLanguage === 'mr' ? '🌾 पीक सल्लागार पहा' : selectedLanguage === 'hi' ? '🌾 फसल सलाहकार देखें' : '🌾 Open Crop Advisor'}</span>
+                      </>
+                    )}
+                    {data.appAction === 'schemes' && (
+                      <>
+                        <Calendar size={18} />
+                        <span>{selectedLanguage === 'mr' ? '📜 सरकारी योजना पहा' : selectedLanguage === 'hi' ? '📜 सरकारी योजनाएं देखें' : '📜 View Government Schemes'}</span>
+                      </>
+                    )}
+                    {data.appAction === 'weather' && (
+                      <>
+                        <CloudSun size={18} />
+                        <span>{selectedLanguage === 'mr' ? '🌦️ हवामान अंदाज पहा' : selectedLanguage === 'hi' ? '🌦️ मौसम पूर्वानुमान देखें' : '🌦️ Check Weather Forecast'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Follow-up chips */}
+              {Array.isArray(data.followUps) && data.followUps.length > 0 && (
+                <div style={{ paddingTop: '10px', borderTop: '1px solid var(--color-border-subtle)' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '6px' }}>
+                    {selectedLanguage === 'mr' ? 'पुढील प्रश्न विचारा:' : selectedLanguage === 'hi' ? 'आगे पूछें:' : 'Suggested follow-up:'}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {data.followUps.map((f, fIdx) => (
+                      <button
+                        key={fIdx}
+                        type="button"
+                        onClick={() => {
+                          setQuestion(f);
+                          handleSendQuestion(f);
+                        }}
+                        style={{
+                          padding: '5px 10px',
+                          borderRadius: '999px',
+                          border: '1px solid var(--color-border-subtle)',
+                          backgroundColor: 'var(--color-canvas-surface)',
+                          fontSize: '0.78rem',
+                          color: 'var(--color-primary-forest)',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        💬 {f}
+                      </button>
                     ))}
                   </div>
-                )}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
-                {/* Biological & Chemical Prescription */}
-                {msg.treatmentPlan && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', marginBottom: '16px' }}>
-                    <div style={{ padding: '12px 14px', background: 'var(--color-leaf-light)', borderRadius: 'var(--radius-sm)', border: '1px solid #D2E4D4' }}>
-                      <strong style={{ color: 'var(--color-leaf-green)', fontSize: '0.82rem' }}>🌿 {t.disease.biological}:</strong>
-                      <div style={{ fontSize: '0.85rem', marginTop: '2px' }}>{msg.treatmentPlan.biological}</div>
-                    </div>
-                    <div style={{ padding: '12px 14px', background: 'var(--color-canvas-surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border-subtle)' }}>
-                      <strong style={{ color: 'var(--color-text-main)', fontSize: '0.82rem' }}>🧪 {t.disease.chemical}:</strong>
-                      <div style={{ fontSize: '0.85rem', marginTop: '2px' }}>{msg.treatmentPlan.chemical}</div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Farmer Tip */}
-                {msg.farmerTip && (
-                  <div style={{ padding: '10px 14px', background: '#FFF9EB', border: '1px solid #FDE68A', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', color: '#92400E', marginBottom: '12px' }}>
-                    💡 <strong>{t.agronomist.farmerTip}:</strong> {msg.farmerTip}
-                  </div>
-                )}
-
-                {/* RAG Farm Context Grounding Badge */}
-                {msg.ragContext && (
-                  <div style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    gap: '6px',
-                    paddingTop: '10px',
-                    borderTop: '1px solid var(--color-border-subtle)',
-                    fontSize: '0.75rem',
-                    color: 'var(--color-text-muted)'
-                  }}>
-                    <Database size={13} color="var(--color-leaf-green)" />
-                    <span>{lang === 'hi' ? 'सक्रिय खेत संदर्भ:' : lang === 'mr' ? 'सक्रिय शेत संदर्भ:' : 'Grounded in Active Context:'}</span>
-                    <span className="badge badge-wheat">{translateCropName(msg.ragContext.crop, lang)}</span>
-                    <span className="badge badge-wheat">{translateCropStage(msg.ragContext.stage, lang)}</span>
-                    <span className="badge badge-wheat">{translateSoilType(msg.ragContext.soil, lang)}</span>
-                    <span className="badge badge-wheat">{msg.ragContext.district}</span>
-                  </div>
-                )}
+        {/* Skeleton Thinking Card */}
+        {loading && (
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              border: '1.5px solid #D2E4D4',
+              borderRadius: 'var(--radius-lg)',
+              padding: '20px',
+              boxShadow: 'var(--shadow-sm)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: 'var(--color-leaf-light)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--color-leaf-green)'
+                }}
+              >
+                <Sparkles size={18} className="animate-spin" />
               </div>
-            );
-          })}
-        </div>
+              <strong style={{ fontSize: '0.92rem', color: 'var(--color-primary-forest)' }}>
+                {selectedLanguage === 'mr' ? 'कृषी मित्र विचार करत आहे...' : selectedLanguage === 'hi' ? 'कृषि मित्र सोच रहा है...' : 'Krishi Mitra is thinking…'}
+              </strong>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ height: '18px', width: '70%', backgroundColor: '#E5E7EB', borderRadius: '4px', animation: 'pulse 1.5s infinite' }} />
+              <div style={{ height: '14px', width: '90%', backgroundColor: '#F3F4F6', borderRadius: '4px', animation: 'pulse 1.5s infinite' }} />
+              <div style={{ height: '14px', width: '50%', backgroundColor: '#F3F4F6', borderRadius: '4px', animation: 'pulse 1.5s infinite' }} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

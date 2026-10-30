@@ -17,3 +17,5 @@ services:
         value: gemini-2.5-flash
       - key: DATA_GOV_API_KEY
         sync: false
+      - key: GROQ_API_KEY
+        sync: false

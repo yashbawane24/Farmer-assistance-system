@@ -137,9 +137,20 @@ export const api = {
     fetchJson(`/alerts/active?district=${encodeURIComponent(district)}&crop=${encodeURIComponent(crop)}&stage=${encodeURIComponent(stage)}`),
 
   // AI Voice Agronomist
+  warmupAgronomist: (params = {}) => {
+    const qs = new URLSearchParams();
+    if (params.farmerId) qs.set('farmerId', params.farmerId);
+    if (params.district) qs.set('district', params.district);
+    if (params.crop) qs.set('crop', params.crop);
+    return fetchJson(`/agronomist/warmup?${qs.toString()}`).catch(() => null);
+  },
   askAgronomist: (question, farmerId = 1, language = 'en', history = []) => fetchJson('/agronomist/ask', {
     method: 'POST',
     body: JSON.stringify({ question, farmerId, language, history })
+  }),
+  askAgronomistVoice: (payload) => fetchJson('/agronomist/voice-ask', {
+    method: 'POST',
+    body: JSON.stringify(payload)
   }),
   streamAgronomist: async ({
     question,

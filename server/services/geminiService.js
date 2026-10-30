@@ -1,19 +1,22 @@
 // High-performance Gemini API integration with model autodetection, SSE streaming,
-// and single-model optimization (no slow per-request fallback cascades).
+// single-model fast resolution (no slow fallback cascades), and Groq Whisper STT support.
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 export const PREFERRED_MODELS = [
     'gemini-3.1-flash-lite',
-    'gemini-flash-lite-latest',
-    'gemini-3-flash-preview',
     'gemini-3.5-flash-lite',
-    'gemini-3.1-flash-lite-preview'
+    'gemini-3.1-flash-lite-preview',
+    'gemini-3-flash-preview',
+    'gemini-flash-lite-latest',
+    'gemini-3.8-flash',
+    'gemini-flash-latest'
 ];
 
 export const LANGUAGE_NAMES = { en: 'English', hi: 'Hindi', mr: 'Marathi' };
 
 export const isGeminiConfigured = () => Boolean(process.env.GEMINI_API_KEY);
+export const isGroqConfigured = () => Boolean(process.env.GROQ_API_KEY);
 
 function aiError(message, status = 502, code = 'AI_SERVICE_ERROR') {
     const err = new Error(message);
@@ -24,6 +27,17 @@ function aiError(message, status = 502, code = 'AI_SERVICE_ERROR') {
 
 let cachedOptimizedModel = null;
 let modelResolutionPromise = null;
+
+export function getThinkingConfigForModel(modelName) {
+    if (!modelName) return undefined;
+    if (modelName.includes('3.5')) {
+        return { thinkingLevel: 'MINIMAL' };
+    }
+    if (modelName.includes('3.1') || modelName.includes('3-') || modelName.includes('3.8') || modelName.includes('2.5')) {
+        return { thinkingBudget: 0 };
+    }
+    return undefined;
+}
 
 /**
  * Resolves the fastest available Gemini model for this API key once at startup / first call.
@@ -64,6 +78,7 @@ export async function resolveOptimizedModel() {
             console.warn(`[Gemini] Model resolution lookup failed (${e.message}). Falling back to default.`);
         }
         cachedOptimizedModel = PREFERRED_MODELS[0];
+        console.log(`⚡ [Gemini] Model selected: "${cachedOptimizedModel}"`);
         return cachedOptimizedModel;
     })();
 
@@ -76,15 +91,17 @@ if (process.env.GEMINI_API_KEY) {
 }
 
 /**
- * Synchronous / Non-streaming generate call (with single retry on 429/503).
+ * Synchronous / Non-streaming generate call.
+ * Uses low/zero thinking budget for ultra-fast response under 2-3s.
  */
 export async function generate({
     systemInstruction,
     contents,
     responseSchema,
     temperature = 0.3,
-    maxOutputTokens = 2500,
-    timeoutMs = 45000
+    maxOutputTokens = 500,
+    timeoutMs = 20000,
+    thinkingConfig
 }) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -92,12 +109,15 @@ export async function generate({
     }
 
     const model = await resolveOptimizedModel();
+    const effectiveThinkingConfig = thinkingConfig !== undefined ? thinkingConfig : getThinkingConfigForModel(model);
+
     const body = {
         contents,
         generationConfig: {
             temperature,
             maxOutputTokens,
-            ...(responseSchema ? { responseMimeType: 'application/json', responseSchema } : {})
+            ...(responseSchema ? { responseMimeType: 'application/json', responseSchema } : {}),
+            ...(effectiveThinkingConfig && Object.keys(effectiveThinkingConfig).length ? { thinkingConfig: effectiveThinkingConfig } : {})
         }
     };
     if (systemInstruction) {
@@ -116,27 +136,54 @@ export async function generate({
     };
 
     const startTime = Date.now();
-    let { res, data } = await execCall().catch(err => {
-        throw aiError(`Could not reach the AI service: ${err.message}`);
-    });
+    let execResult = await execCall().catch(() => null);
+    if (!execResult) {
+        // Retry once on transient network glitch or timeout
+        await new Promise(r => setTimeout(r, 600));
+        execResult = await execCall().catch(err => {
+            throw aiError(`Could not reach the AI service: ${err.message}`);
+        });
+    }
+    let { res, data } = execResult;
 
-    // Single retry on transient capacity spike (429 / 503)
+    // Single retry on transient capacity spike (429 / 503) with seamless fallback
     if (!res.ok && (res.status === 429 || res.status === 503)) {
-        console.warn(`[Gemini] ${model} hit status ${res.status}. Retrying once after 1s...`);
-        await new Promise(r => setTimeout(r, 1000));
+        console.warn(`[Gemini] ${model} hit status ${res.status}. Retrying once after 800ms...`);
+        await new Promise(r => setTimeout(r, 800));
         const retryResult = await execCall().catch(() => null);
-        if (retryResult) {
+        if (retryResult && retryResult.res?.ok) {
             res = retryResult.res;
             data = retryResult.data;
+        } else {
+            // Capacity spike: switch to alternative flash model
+            const fallbackModel = PREFERRED_MODELS.find(m => m !== model) || 'gemini-3.5-flash-lite';
+            console.warn(`[Gemini] ${model} high demand (${res.status}). Switching to ${fallbackModel}...`);
+            const fallbackThinking = getThinkingConfigForModel(fallbackModel);
+            const fallbackBody = {
+                ...body,
+                generationConfig: {
+                    ...body.generationConfig,
+                    ...(fallbackThinking ? { thinkingConfig: fallbackThinking } : {})
+                }
+            };
+            if (!fallbackThinking) {
+                delete fallbackBody.generationConfig.thinkingConfig;
+            }
+            const fallbackRes = await fetch(`${API_BASE}/${fallbackModel}:generateContent`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+                body: JSON.stringify(fallbackBody),
+                signal: AbortSignal.timeout(timeoutMs)
+            }).catch(() => null);
+
+            if (fallbackRes && fallbackRes.ok) {
+                res = fallbackRes;
+                data = await fallbackRes.json().catch(() => ({}));
+            }
         }
     }
 
     if (!res.ok) {
-        if (model !== 'gemini-flash-lite-latest' && (res.status === 400 || res.status === 404)) {
-            console.warn(`[Gemini] Model ${model} returned ${res.status} (${data?.error?.message}). Falling back to gemini-flash-lite-latest.`);
-            cachedOptimizedModel = 'gemini-flash-lite-latest';
-            return generate({ systemInstruction, contents, responseSchema, temperature, maxOutputTokens, timeoutMs });
-        }
         throw aiError(data?.error?.message || `AI service returned HTTP ${res.status}`);
     }
 
@@ -168,8 +215,8 @@ export async function streamGenerate({
     systemInstruction,
     contents,
     temperature = 0.3,
-    maxOutputTokens = 2500,
-    timeoutMs = 45000,
+    maxOutputTokens = 500,
+    timeoutMs = 20000,
     onChunk,
     signal
 }) {
@@ -179,11 +226,14 @@ export async function streamGenerate({
     }
 
     const model = await resolveOptimizedModel();
+    const effectiveThinkingConfig = getThinkingConfigForModel(model);
+
     const body = {
         contents,
         generationConfig: {
             temperature,
-            maxOutputTokens
+            maxOutputTokens,
+            ...(effectiveThinkingConfig && Object.keys(effectiveThinkingConfig).length ? { thinkingConfig: effectiveThinkingConfig } : {})
         }
     };
     if (systemInstruction) {
@@ -209,7 +259,6 @@ export async function streamGenerate({
             signal: controller.signal
         });
 
-        // Single retry on 429/503 rate limit / spike
         if (res.status === 429 || res.status === 503) {
             await new Promise(r => setTimeout(r, 600));
             res = await fetch(`${API_BASE}/${model}:streamGenerateContent?alt=sse`, {
@@ -227,11 +276,6 @@ export async function streamGenerate({
     if (!res.ok) {
         clearTimeout(timeoutId);
         const data = await res.json().catch(() => ({}));
-        if (model !== 'gemini-flash-lite-latest' && (res.status === 400 || res.status === 404)) {
-            console.warn(`[Gemini Stream] Model ${model} returned ${res.status} (${data?.error?.message}). Falling back to gemini-flash-lite-latest.`);
-            cachedOptimizedModel = 'gemini-flash-lite-latest';
-            return streamGenerate({ systemInstruction, contents, temperature, maxOutputTokens, timeoutMs, onChunk, signal });
-        }
         throw aiError(data?.error?.message || `AI stream returned HTTP ${res.status}`);
     }
 
@@ -247,7 +291,7 @@ export async function streamGenerate({
 
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
-            buffer = lines.pop(); // keep partial line in buffer
+            buffer = lines.pop();
 
             for (const line of lines) {
                 const trimmed = line.trim();
@@ -288,10 +332,91 @@ export async function streamGenerate({
 }
 
 // Accepts "data:image/jpeg;base64,...." or raw base64
-export function splitDataUrl(imageBase64, fallbackMime = 'image/jpeg') {
+export function splitDataUrl(imageBase64, fallbackMime = 'audio/webm') {
+    if (!imageBase64) return { mimeType: fallbackMime, data: '' };
     if (imageBase64.includes(';base64,')) {
         const [head, data] = imageBase64.split(';base64,');
         return { mimeType: head.replace('data:', '') || fallbackMime, data };
     }
     return { mimeType: fallbackMime, data: imageBase64 };
+}
+
+/**
+ * Transcribe audio using Groq Whisper Large v3 Turbo (ultra-fast STT).
+ */
+export async function transcribeWithGroq({ audioBuffer, mimeType = 'audio/webm', language = 'en' }) {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) throw new Error('GROQ_API_KEY is not configured');
+
+    const cleanMime = (mimeType || 'audio/webm').split(';')[0].trim().toLowerCase();
+    const ext = cleanMime.includes('wav') ? 'wav' : cleanMime.includes('mp4') || cleanMime.includes('m4a') ? 'mp4' : cleanMime.includes('ogg') ? 'ogg' : 'webm';
+
+    const formData = new FormData();
+    formData.append('file', new Blob([audioBuffer], { type: cleanMime }), `audio.${ext}`);
+    formData.append('model', 'whisper-large-v3-turbo');
+    const langCode = (language || 'en').slice(0, 2).toLowerCase();
+    formData.append('language', langCode);
+    formData.append('response_format', 'json');
+
+    const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}` },
+        body: formData,
+        signal: AbortSignal.timeout(15000)
+    });
+
+    if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error?.message || `Groq transcription failed with HTTP ${res.status}`);
+    }
+
+    const json = await res.json();
+    return (json.text || '').trim();
+}
+
+/**
+ * Fallback audio transcription using Gemini (no thinking, 200 tokens max).
+ */
+export async function transcribeWithGemini({ audioData, mimeType = 'audio/webm', language = 'mr' }) {
+    const langLabel = LANGUAGE_NAMES[language] || 'Marathi/Hindi/English';
+    const instruction = `Transcribe this farmer's spoken question exactly, in ${langLabel} script. Return only the transcribed text with no extra commentary or markdown.`;
+
+    const model = await resolveOptimizedModel();
+    const thinkingConfig = getThinkingConfigForModel(model);
+
+    const text = await generate({
+        contents: [{
+            role: 'user',
+            parts: [
+                { text: instruction },
+                { inline_data: { mime_type: mimeType.split(';')[0], data: audioData } }
+            ]
+        }],
+        temperature: 0.1,
+        maxOutputTokens: 200,
+        timeoutMs: 20000,
+        thinkingConfig
+    });
+
+    return (text || '').trim();
+}
+
+/**
+ * Unified audio transcription: prefers Groq Whisper (faster), falls back to Gemini.
+ */
+export async function transcribeAudio({ audioBase64, mimeType = 'audio/webm', language = 'en' }) {
+    const { mimeType: detectedMime, data: base64Data } = splitDataUrl(audioBase64, mimeType);
+    const cleanMime = (detectedMime || mimeType || 'audio/webm').split(';')[0].trim().toLowerCase();
+
+    if (process.env.GROQ_API_KEY) {
+        try {
+            const buffer = Buffer.from(base64Data, 'base64');
+            const text = await transcribeWithGroq({ audioBuffer: buffer, mimeType: cleanMime, language });
+            if (text) return text;
+        } catch (groqErr) {
+            console.warn(`[Groq STT] Groq transcription error (${groqErr.message}). Falling back to Gemini.`);
+        }
+    }
+
+    return transcribeWithGemini({ audioData: base64Data, mimeType: cleanMime, language });
 }

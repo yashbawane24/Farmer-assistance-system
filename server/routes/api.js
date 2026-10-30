@@ -66,7 +66,9 @@ router.get('/weather/today', WeatherAlertController.getTodayStatus);
 router.get('/alerts/active', WeatherAlertController.getAlerts);
 
 // AI Voice Agronomist (RAG)
+router.get('/agronomist/warmup', AgronomistController.warmup);
 router.post('/agronomist/ask', AgronomistController.consult);
+router.post('/agronomist/voice-ask', AgronomistController.voiceAsk);
 router.post('/agronomist/ask-stream', AgronomistController.consultStream);
 router.post('/agronomist/transcribe', AgronomistController.transcribe);
 

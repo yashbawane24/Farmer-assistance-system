@@ -1,6 +1,6 @@
 import { query, queryOne } from '../models/db.js';
-import { REGION_STATE, REGION_CROPS, MSP_YEAR_LABEL } from '../config/maharashtra.js';
-import { generate, streamGenerate, isGeminiConfigured, resolveOptimizedModel, LANGUAGE_NAMES } from './geminiService.js';
+import { REGION_STATE, REGION_CROPS } from '../config/maharashtra.js';
+import { generate, streamGenerate, resolveOptimizedModel, LANGUAGE_NAMES } from './geminiService.js';
 import { getLatestCropPrices } from './agmarknetService.js';
 import { WeatherService } from './weatherAndAlertService.js';
 
@@ -10,7 +10,7 @@ const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes in-memory cache
 // In-memory cache for weather and mandi summaries per district+crop
 const summaryCache = new Map();
 
-function getCached(key) {
+export function getCached(key) {
     const entry = summaryCache.get(key);
     if (entry && (Date.now() - entry.timestamp < CACHE_TTL_MS)) {
         return entry.data;
@@ -18,9 +18,120 @@ function getCached(key) {
     return null;
 }
 
-function setCached(key, data) {
+export function setCached(key, data) {
     summaryCache.set(key, { data, timestamp: Date.now() });
 }
+
+// Strict Gemini Response Schema for Krishi Mitra
+export const AGRONOMIST_RESPONSE_SCHEMA = {
+    type: 'object',
+    properties: {
+        intent: {
+            type: 'string',
+            enum: [
+                'disease_pest',
+                'nutrition_fertilizer',
+                'irrigation_weather',
+                'market_price',
+                'scheme_subsidy',
+                'crop_planning',
+                'general',
+                'unclear'
+            ]
+        },
+        headline: {
+            type: 'string',
+            description: 'Direct answer, maximum 15 words'
+        },
+        likelyCause: {
+            type: 'string',
+            description: '1 sentence, say "likely" unless certain; empty string if not relevant'
+        },
+        confidence: {
+            type: 'string',
+            enum: ['high', 'medium', 'low']
+        },
+        steps: {
+            type: 'array',
+            items: { type: 'string' },
+            description: '2-4 short action steps, each max 20 words, starting with an active verb'
+        },
+        treatment: {
+            type: 'object',
+            nullable: true,
+            description: 'ONLY for disease_pest or nutrition_fertilizer intents, otherwise null',
+            properties: {
+                organic: {
+                    type: 'object',
+                    nullable: true,
+                    properties: {
+                        name: { type: 'string' },
+                        dosePerLitre: { type: 'string' },
+                        dosePerAcre: { type: 'string' }
+                    }
+                },
+                chemical: {
+                    type: 'object',
+                    nullable: true,
+                    properties: {
+                        product: { type: 'string' },
+                        activeIngredient: { type: 'string' },
+                        dosePerLitre: { type: 'string' },
+                        dosePerAcre: { type: 'string' },
+                        waitDaysBeforeHarvest: { type: 'string' },
+                        safety: { type: 'string' }
+                    }
+                }
+            }
+        },
+        priceInfo: {
+            type: 'object',
+            nullable: true,
+            description: 'ONLY for market_price from context, otherwise null',
+            properties: {
+                mandi: { type: 'string' },
+                modalPrice: { type: 'string' },
+                date: { type: 'string' },
+                comparedToMsp: { type: 'string' }
+            }
+        },
+        weatherNote: {
+            type: 'string',
+            description: '1 sentence when weather matters, otherwise empty string'
+        },
+        askBack: {
+            type: 'string',
+            description: 'If question is unclear, 1 short clarifying question; otherwise empty string'
+        },
+        appAction: {
+            type: 'string',
+            enum: ['disease_scan', 'smart_mandi', 'crop_advisor', 'schemes', 'weather', 'none']
+        },
+        followUps: {
+            type: 'array',
+            items: { type: 'string' },
+            description: '2-3 short follow-up questions the farmer can tap'
+        },
+        speakText: {
+            type: 'string',
+            description: '2-3 plain spoken sentences in the farmer\'s language (headline + key step). No symbols.'
+        }
+    },
+    required: [
+        'intent',
+        'headline',
+        'likelyCause',
+        'confidence',
+        'steps',
+        'treatment',
+        'priceInfo',
+        'weatherNote',
+        'askBack',
+        'appAction',
+        'followUps',
+        'speakText'
+    ]
+};
 
 // Keyword retrieval from agronomy knowledge base (max 1 most relevant doc to keep prompt compact)
 function retrieveKnowledge(docs, question, crop) {
@@ -36,8 +147,8 @@ function retrieveKnowledge(docs, question, crop) {
     return scored.filter(s => s.score > 1).sort((a, b) => b.score - a.score).slice(0, 1).map(s => s.doc);
 }
 
-// Quick 1.5s timeout on weather so it never delays voice responses
-async function getWeatherSummary(district = 'Nashik') {
+// Quick 1.5s timeout on weather so it never blocks answers
+export async function getWeatherSummary(district = 'Nashik') {
     const cacheKey = `weather:${district.toLowerCase()}`;
     const cached = getCached(cacheKey);
     if (cached) return cached;
@@ -65,7 +176,7 @@ async function getWeatherSummary(district = 'Nashik') {
 }
 
 // Top 5 mandi prices cached for 15 minutes
-async function getMarketSummary(crop = 'Tomato', district = 'Nashik') {
+export async function getMarketSummary(crop = 'Tomato', district = 'Nashik') {
     const cacheKey = `mandi:${crop.toLowerCase()}:${district.toLowerCase()}`;
     const cached = getCached(cacheKey);
     if (cached) return cached;
@@ -76,7 +187,7 @@ async function getMarketSummary(crop = 'Tomato', district = 'Nashik') {
         const sorted = [...rows].sort((a, b) =>
             Number(b.district === district) - Number(a.district === district) || b.modal_price_quintal - a.modal_price_quintal
         ).slice(0, 5);
-        const summary = sorted.map(r => `${r.market} APMC (${r.district}): modal ₹${r.modal_price_quintal}/q (${r.arrival_date})`).join('\n');
+        const summary = sorted.map(r => `${r.market} APMC (${r.district}): modal ₹${r.modal_price_quintal}/q (${r.arrival_date})`).join('; ');
         setCached(cacheKey, summary);
         return summary;
     } catch {
@@ -84,94 +195,82 @@ async function getMarketSummary(crop = 'Tomato', district = 'Nashik') {
     }
 }
 
-/**
- * Parses streamable text format into structured cards for the UI:
- * [Direct Answer]
- * ===ACTIONS===
- * - Action 1
- * ===ORGANIC===
- * Remedy
- * ===CHEMICAL===
- * Chemical dose
- * ===TIP===
- * Farmer tip
- */
-export function parseStructuredAnswer(rawText = '') {
-    let transcript = null;
-    let text = rawText;
+function stripMarkdown(text) {
+    if (typeof text !== 'string') return text;
+    return text
+        .replace(/\*\*/g, '')
+        .replace(/###/g, '')
+        .replace(/---/g, '')
+        .replace(/^#+\s*/gm, '')
+        .trim();
+}
 
-    // Extract TRANSCRIPT: line if present (from audio questions)
-    const transcriptMatch = /^TRANSCRIPT:\s*(.+)$/m.exec(text);
-    if (transcriptMatch) {
-        transcript = transcriptMatch[1].trim();
-        text = text.replace(/^TRANSCRIPT:\s*.+\n*/m, '').trim();
+export function cleanAgronomistJson(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+
+    const intent = raw.intent || 'general';
+    const isTreatmentAllowed = intent === 'disease_pest' || intent === 'nutrition_fertilizer';
+    const isPriceAllowed = intent === 'market_price';
+
+    const cleanSteps = Array.isArray(raw.steps)
+        ? raw.steps.map(s => stripMarkdown(String(s || ''))).filter(Boolean).slice(0, 4)
+        : [];
+
+    let treatment = null;
+    if (isTreatmentAllowed && raw.treatment && typeof raw.treatment === 'object') {
+        const org = raw.treatment.organic;
+        const chem = raw.treatment.chemical;
+        treatment = {
+            organic: org && typeof org === 'object' && org.name ? {
+                name: stripMarkdown(String(org.name || '')),
+                dosePerLitre: stripMarkdown(String(org.dosePerLitre || '')),
+                dosePerAcre: stripMarkdown(String(org.dosePerAcre || ''))
+            } : null,
+            chemical: chem && typeof chem === 'object' && (chem.product || chem.activeIngredient) ? {
+                product: stripMarkdown(String(chem.product || '')),
+                activeIngredient: stripMarkdown(String(chem.activeIngredient || '')),
+                dosePerLitre: stripMarkdown(String(chem.dosePerLitre || '')),
+                dosePerAcre: stripMarkdown(String(chem.dosePerAcre || '')),
+                waitDaysBeforeHarvest: stripMarkdown(String(chem.waitDaysBeforeHarvest || '')),
+                safety: stripMarkdown(String(chem.safety || ''))
+            } : null
+        };
+        if (!treatment.organic && !treatment.chemical) treatment = null;
     }
 
-    const sections = {
-        answer: '',
-        actions: [],
-        organic: '',
-        chemical: '',
-        tip: ''
-    };
-
-    const cleanSectionContent = (str = '') => {
-        return str
-            .replace(/^#+\s*/gm, '')
-            .replace(/[-=_]{3,}/g, '')
-            .trim();
-    };
-
-    const parts = text.split(/(?:###\s*)?(===ACTIONS===|===ORGANIC===|===CHEMICAL===|===TIP===)/g);
-    sections.answer = cleanSectionContent(parts[0] || '').trim();
-
-    for (let i = 1; i < parts.length; i += 2) {
-        const marker = parts[i];
-        const content = cleanSectionContent(parts[i + 1] || '');
-        if (marker.includes('ACTIONS')) {
-            sections.actions = content
-                .split('\n')
-                .map(l => l.replace(/^[-*•\d.]\s*/, '').trim())
-                .filter(l => l.length > 2 && !l.startsWith('===') && !l.startsWith('---') && !l.startsWith('###'));
-        } else if (marker.includes('ORGANIC')) {
-            sections.organic = content;
-        } else if (marker.includes('CHEMICAL')) {
-            sections.chemical = content;
-        } else if (marker.includes('TIP')) {
-            sections.tip = content;
-        }
+    let priceInfo = null;
+    if (isPriceAllowed && raw.priceInfo && typeof raw.priceInfo === 'object') {
+        priceInfo = {
+            mandi: stripMarkdown(String(raw.priceInfo.mandi || '')),
+            modalPrice: stripMarkdown(String(raw.priceInfo.modalPrice || '')),
+            date: stripMarkdown(String(raw.priceInfo.date || '')),
+            comparedToMsp: stripMarkdown(String(raw.priceInfo.comparedToMsp || ''))
+        };
     }
 
-    const hasTreatment = Boolean(sections.organic || sections.chemical);
+    const headline = stripMarkdown(String(raw.headline || ''));
+    const likelyCause = raw.likelyCause && raw.likelyCause !== 'null' ? stripMarkdown(String(raw.likelyCause)) : '';
+    const weatherNote = raw.weatherNote && raw.weatherNote !== 'null' ? stripMarkdown(String(raw.weatherNote)) : '';
+    const askBack = raw.askBack && raw.askBack !== 'null' ? stripMarkdown(String(raw.askBack)) : '';
+    const speakText = stripMarkdown(String(raw.speakText || headline || ''));
 
-    // Build complete conversational readout across all sections (root cause + actions + remedies + tip)
-    const audioParts = [];
-    if (sections.answer) {
-        audioParts.push(sections.answer);
-    }
-    if (sections.actions && sections.actions.length > 0) {
-        audioParts.push(sections.actions.join('. '));
-    }
-    if (sections.organic && sections.organic !== '-') {
-        audioParts.push(sections.organic);
-    }
-    if (sections.chemical && sections.chemical !== '-') {
-        audioParts.push(sections.chemical);
-    }
-    if (sections.tip) {
-        audioParts.push(sections.tip);
-    }
-
-    const fullAudioReadout = audioParts.length > 0 ? audioParts.join('. ') : text;
+    const followUps = Array.isArray(raw.followUps)
+        ? raw.followUps.map(f => stripMarkdown(String(f || ''))).filter(Boolean).slice(0, 3)
+        : [];
 
     return {
-        transcript,
-        fullText: text,
-        rootCause: sections.answer || text,
-        immediateAction: sections.actions.length ? sections.actions : null,
-        treatmentPlan: hasTreatment ? { biological: sections.organic || '-', chemical: sections.chemical || '-' } : null,
-        farmerTip: sections.tip || null,
-        audioReadoutText: fullAudioReadout
+        intent,
+        headline,
+        likelyCause,
+        confidence: ['high', 'medium', 'low'].includes(raw.confidence) ? raw.confidence : 'medium',
+        steps: cleanSteps,
+        treatment,
+        priceInfo,
+        weatherNote,
+        askBack,
+        appAction: ['disease_scan', 'smart_mandi', 'crop_advisor', 'schemes', 'weather', 'none'].includes(raw.appAction) ? raw.appAction : 'none',
+        followUps,
+        speakText
     };
 }
 
@@ -179,7 +278,7 @@ export class AgronomistRagService {
     /**
      * Builds fast agricultural prompt with parallel context loading and memory caching.
      */
-    static async buildAgronomistPrompt({ question, farmerId = 1, language = 'en', history = [], hasAudio = false }) {
+    static async buildAgronomistPrompt({ question, farmerId = 1, language = 'en', history = [] }) {
         const startCtx = Date.now();
 
         // 1. Parallel loading of profile, farm, recent scan, knowledge docs
@@ -199,7 +298,7 @@ export class AgronomistRagService {
             farmerName: farmerProfile?.full_name || 'Farmer',
             district: farmerProfile?.district || 'Nashik',
             crop: farm?.current_crop || 'Tomato',
-            stage: farm?.crop_stage || 'Vegetative Stage',
+            stage: farm?.crop_stage || 'Flowering to Fruit Set',
             soil: farm?.soil_type || 'Black Soil (Regur)',
             landSize: farm?.land_size_acres,
             water: farm?.water_reliability,
@@ -214,9 +313,9 @@ export class AgronomistRagService {
 
         const matchedDocs = retrieveKnowledge(knowledgeDocs, question, context.crop);
         const mspLines = REGION_CROPS.filter(c => c.msp).map(c => `${c.name} ₹${c.msp}`).join(', ');
+        const langName = LANGUAGE_NAMES[language] || 'English';
 
-        const systemInstruction = `You are "Krishi Mitra", an expert agronomist for smallholder farmers in ${REGION_STATE}, India.
-Today: ${new Date().toISOString().split('T')[0]}.
+        const systemInstruction = `You are Krishi Mitra, a practical agronomist for small farmers in ${REGION_STATE}. Be brief, specific and actionable. A farmer reads this on a phone in the field.
 
 FARM CONTEXT:
 - Farmer: ${context.farmerName}, ${context.district} district, ${REGION_STATE}
@@ -229,21 +328,17 @@ MSP: ${mspLines}
 ${matchedDocs.length ? `KNOWLEDGE: [${matchedDocs[0].topic}] ${matchedDocs[0].content}` : ''}
 
 RULES:
-- Respond in ${LANGUAGE_NAMES[language] || 'English'} only.
-- Provide a thorough, complete, and practical agricultural consultation. Do not stop halfway, do not cut short, and do not leave thoughts unfinished.
-- First provide a clear, detailed explanation of the crop's condition, stage, the cause of the disease or vulnerability (e.g. recent rainfall, high humidity, soil-borne fungi), and what symptoms to inspect.
-- Then, provide complete actionable solution sections using these exact headers:
-===ACTIONS===
-- Step 1: Immediate practical step in the field
-- Step 2: Cultural/drainage/pruning practice
-- Step 3: Monitoring advice
-===ORGANIC===
-Full biological/organic remedy with exact dosage (e.g. Trichoderma viride @ 5g/L or Neem oil 10,000 ppm @ 3ml/L)
-===CHEMICAL===
-CIB&RC approved chemical fungicide or pesticide with exact commercial name, active ingredient, and precise dosage per litre/acre (e.g. Mancozeb 75% WP @ 2.5g/L or Ridomil Gold @ 2g/L)
-===TIP===
-Practical cost-saving agronomic tip to protect future yield and prevent recurrence
-${hasAudio ? '\nIMPORTANT: Since audio input is provided, the very first line of your response MUST BE:\nTRANSCRIPT: <the exact question spoken by the user in their language>\nfollowed immediately by your answer.' : ''}`;
+1. Intent first: classify into disease_pest | nutrition_fertilizer | irrigation_weather | market_price | scheme_subsidy | crop_planning | general | unclear.
+2. If the user question is vague, unclear or lacks symptoms (e.g. "My crop is not good"), classify intent as "unclear", set confidence "low", set askBack to ONE short clarifying question, keep steps general and safe, and set treatment to null.
+3. Treatment section: ONLY provide for disease_pest or nutrition_fertilizer. For ALL other intents, treatment MUST BE null.
+4. Diagnosis from text only: say "likely" in likelyCause and set appAction to "disease_scan" (so the farmer can confirm with a photo). If symptoms are not described clearly, set askBack and keep steps general/safe.
+5. Chemicals: only CIB&RC-approved products sold in Maharashtra, with dose per 15-litre pump AND per acre, pre-harvest interval and one safety line. Prefer the organic option first.
+6. Prices: market_price must use ONLY the MANDI PRICES context, with APMC name and date. If missing or asked for another crop/district not in context, state that it is unavailable and set appAction to "smart_mandi". Never invent prices.
+7. Weather: irrigation_weather questions must use the LIVE WEATHER context.
+8. Serious cases (rapid spread, more than 30% of plants affected, animal health) -> recommend the KVK / Kisan Call Centre 1800-180-1551.
+9. Reply in ${langName} only. Use simple words; Marathi/Hindi in native script; keep chemical/product names in English.
+10. Non-farming question -> politely say you only help with farming.
+11. Keep the total visible answer under about 120 words. No markdown formatting symbols (no **, no ###, no ---). Headline max 15 words. Each step max 20 words, starting with an active verb.`;
 
         const contents = (Array.isArray(history) ? history : [])
             .slice(-MAX_HISTORY_TURNS)
@@ -262,8 +357,84 @@ ${hasAudio ? '\nIMPORTANT: Since audio input is provided, the very first line of
     }
 
     /**
-     * Fast SSE Streaming Consultation:
-     * Directly streams Gemini text tokens to client with sub-2-second time-to-first-token.
+     * Fast non-streaming structured consultation returning clean JSON.
+     */
+    static async consult({ question, farmerId = 1, language = 'en', history = [] }) {
+        const startTotal = Date.now();
+        const { systemInstruction, contents, context, matchedDocs, ctxDurationMs } =
+            await this.buildAgronomistPrompt({ question, farmerId, language, history });
+
+        contents.push({ role: 'user', parts: [{ text: (question || '').slice(0, 1500) }] });
+
+        const model = await resolveOptimizedModel();
+        const startGemini = Date.now();
+
+        const rawJson = await generate({
+            systemInstruction,
+            contents,
+            responseSchema: AGRONOMIST_RESPONSE_SCHEMA,
+            temperature: 0.3,
+            maxOutputTokens: 500,
+            timeoutMs: 20000
+        });
+
+        const geminiDuration = Date.now() - startGemini;
+        const totalDuration = Date.now() - startTotal;
+
+        const structured = cleanAgronomistJson(rawJson) || {
+            intent: 'general',
+            headline: 'Agricultural Consultation',
+            likelyCause: '',
+            confidence: 'medium',
+            steps: ['Consult your local agricultural extension officer (KVK).'],
+            treatment: null,
+            priceInfo: null,
+            weatherNote: '',
+            askBack: '',
+            appAction: 'none',
+            followUps: [],
+            speakText: 'Please consult your local agricultural extension officer.'
+        };
+
+        if (process.env.DEBUG_PERF !== 'false') {
+            console.log(`⚡ [Agronomist Consult] Q: "${(question || '').slice(0, 40)}" | Intent: ${structured.intent} | Model: ${model} | Ctx: ${ctxDurationMs}ms | Gemini: ${geminiDuration}ms | Total: ${totalDuration}ms`);
+        }
+
+        return {
+            query: question,
+            language,
+            retrievedContext: context,
+            aiAvailable: true,
+            aiEngine: `Google Gemini (${model})`,
+            knowledgeTopic: matchedDocs[0]?.topic || null,
+            timings: {
+                contextMs: ctxDurationMs,
+                geminiMs: geminiDuration,
+                totalMs: totalDuration
+            },
+            ...structured
+        };
+    }
+
+    /**
+     * Pre-warms the model and context cache so subsequent user queries are instant (<2s).
+     */
+    static async warmup({ farmerId = 1, district = 'Nashik', crop = 'Tomato' }) {
+        const start = Date.now();
+        const [model] = await Promise.all([
+            resolveOptimizedModel(),
+            getWeatherSummary(district),
+            getMarketSummary(crop, district)
+        ]);
+        return {
+            model,
+            warmed: true,
+            durationMs: Date.now() - start
+        };
+    }
+
+    /**
+     * Backward-compatible streaming consultation.
      */
     static async consultStream({
         question,
@@ -275,103 +446,15 @@ ${hasAudio ? '\nIMPORTANT: Since audio input is provided, the very first line of
         onChunk,
         signal
     }) {
-        const startTotal = Date.now();
-        const hasAudio = Boolean(audioBase64);
-
-        const { systemInstruction, contents, context, matchedDocs, ctxDurationMs } =
-            await this.buildAgronomistPrompt({
-                question: question || 'Farmer voice question',
-                farmerId,
-                language,
-                history,
-                hasAudio
-            });
-
-        // Add user turn
-        const userParts = [];
-        if (hasAudio) {
-            // Strip data URL header if present
-            const cleanBase64 = audioBase64.includes(';base64,') ? audioBase64.split(';base64,')[1] : audioBase64;
-            const cleanMime = (audioMimeType || 'audio/webm').split(';')[0];
-            userParts.push({
-                inline_data: {
-                    mime_type: cleanMime,
-                    data: cleanBase64
-                }
-            });
-            userParts.push({ text: `Farmer voice question in ${LANGUAGE_NAMES[language] || 'their native language'}.` });
-        } else {
-            userParts.push({ text: (question || '').slice(0, 1500) });
-        }
-        contents.push({ role: 'user', parts: userParts });
-
-        const streamResult = await streamGenerate({
-            systemInstruction,
-            contents,
-            temperature: 0.3,
-            maxOutputTokens: 2500,
-            timeoutMs: 45000,
-            onChunk,
-            signal
-        });
-
-        const parsed = parseStructuredAnswer(streamResult.text);
-        const totalDuration = Date.now() - startTotal;
-
-        if (process.env.DEBUG_PERF !== 'false') {
-            console.log(`⚡ [Agronomist Perf] Q: "${(question || parsed.transcript || 'audio').slice(0, 40)}" | Ctx: ${ctxDurationMs}ms | Gemini (${streamResult.model}): First chunk ${streamResult.timings.firstChunkMs}ms, Total ${streamResult.timings.totalMs}ms | Total Request: ${totalDuration}ms`);
-        }
-
-        return {
-            ...parsed,
-            model: streamResult.model,
-            knowledgeTopic: matchedDocs[0]?.topic || null,
-            retrievedContext: context,
-            aiEngine: `Google Gemini (${streamResult.model})`,
-            timings: {
-                contextMs: ctxDurationMs,
-                firstChunkMs: streamResult.timings.firstChunkMs,
-                geminiTotalMs: streamResult.timings.totalMs,
-                totalMs: totalDuration
+        // Fallback for any legacy callers: execute consult and stream speakText
+        const answer = await this.consult({ question, farmerId, language, history });
+        if (onChunk && answer.headline) {
+            onChunk(answer.headline);
+            if (answer.steps && answer.steps.length) {
+                onChunk('\n' + answer.steps.join('\n'));
             }
-        };
-    }
-
-    /**
-     * Non-streaming consultation fallback for backward compatibility.
-     */
-    static async consult({ question, farmerId = 1, language = 'en', history = [] }) {
-        const startTotal = Date.now();
-        const { systemInstruction, contents, context, matchedDocs, ctxDurationMs } =
-            await this.buildAgronomistPrompt({ question, farmerId, language, history, hasAudio: false });
-
-        contents.push({ role: 'user', parts: [{ text: (question || '').slice(0, 1500) }] });
-
-        const model = await resolveOptimizedModel();
-        const rawText = await generate({
-            systemInstruction,
-            contents,
-            temperature: 0.3,
-            maxOutputTokens: 2500,
-            timeoutMs: 45000
-        });
-
-        const parsed = parseStructuredAnswer(rawText);
-        const totalDuration = Date.now() - startTotal;
-
-        if (process.env.DEBUG_PERF !== 'false') {
-            console.log(`⚡ [Agronomist Consult] Q: "${question.slice(0, 40)}" | Model: ${model} | Total: ${totalDuration}ms`);
         }
-
-        return {
-            query: question,
-            language,
-            retrievedContext: context,
-            aiAvailable: true,
-            aiEngine: `Google Gemini (${model})`,
-            knowledgeTopic: matchedDocs[0]?.topic || null,
-            ...parsed
-        };
+        return answer;
     }
 }
 
