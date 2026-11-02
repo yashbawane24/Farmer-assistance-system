@@ -13,7 +13,8 @@ import {
   Sparkles,
   BarChart3,
   Calendar,
-  Layers
+  Layers,
+  Play
 } from 'lucide-react';
 import { getTranslation } from '../services/i18n.js';
 
@@ -87,6 +88,28 @@ export function LandingPage({ onNavigate, lang, onLanguageChange, onOpenAuth, is
                 </button>
               ))}
             </div>
+
+            <button
+              type="button"
+              onClick={() => onNavigate('demo')}
+              style={{
+                backgroundColor: '#FFFFFF',
+                color: '#112019',
+                borderRadius: '999px',
+                padding: '8px 14px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                border: '1px solid #D2E4D4',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+              title="Watch self-playing website demo video"
+            >
+              <Play size={13} fill="#112019" />
+              <span>{lang === 'mr' ? 'डेमो व्हिडिओ' : lang === 'hi' ? 'डेमो वीडियो' : 'Demo Video'}</span>
+            </button>
 
             <button
               type="button"
@@ -177,44 +200,69 @@ export function LandingPage({ onNavigate, lang, onLanguageChange, onOpenAuth, is
                 {t.hero.subhead}
               </p>
 
-              {/* Pill Button with Arrow Circle */}
-              <button
-                type="button"
-                onClick={isAuthenticated ? () => onNavigate('dashboard') : onOpenAuth}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  backgroundColor: '#112019',
-                  color: '#FFFFFF',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  borderRadius: '999px',
-                  padding: '6px 6px 6px 24px',
-                  fontSize: '0.92rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 6px 18px rgba(0, 0, 0, 0.25)',
-                  transition: 'transform 0.2s ease'
-                }}
-              >
-                <span>
-                  {isAuthenticated
-                    ? (lang === 'mr' ? 'माझ्या शेत डॅशबोर्डवर जा' : lang === 'hi' ? 'खेत डैशबोर्ड पर जाएं' : 'Go to Farm Dashboard')
-                    : t.hero.ctaPlan}
-                </span>
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  backgroundColor: '#FFFFFF',
-                  color: '#112019',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <ArrowRight size={16} />
-                </div>
-              </button>
+              {/* Pill Button with Arrow Circle + Demo Video Button */}
+              <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={isAuthenticated ? () => onNavigate('dashboard') : onOpenAuth}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    backgroundColor: '#112019',
+                    color: '#FFFFFF',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '999px',
+                    padding: '6px 6px 6px 24px',
+                    fontSize: '0.92rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 6px 18px rgba(0, 0, 0, 0.25)',
+                    transition: 'transform 0.2s ease'
+                  }}
+                >
+                  <span>
+                    {isAuthenticated
+                      ? (lang === 'mr' ? 'माझ्या शेत डॅशबोर्डवर जा' : lang === 'hi' ? 'खेत डैशबोर्ड पर जाएं' : 'Go to Farm Dashboard')
+                      : t.hero.ctaPlan}
+                  </span>
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    backgroundColor: '#FFFFFF',
+                    color: '#112019',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <ArrowRight size={16} />
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onNavigate('demo')}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    color: '#112019',
+                    border: 'none',
+                    borderRadius: '999px',
+                    padding: '12px 22px',
+                    fontSize: '0.92rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 6px 18px rgba(0, 0, 0, 0.25)',
+                    transition: 'transform 0.2s ease'
+                  }}
+                >
+                  <Play size={16} fill="#112019" />
+                  <span>{lang === 'mr' ? 'व्हिडिओ डेमो पहा (२:००)' : lang === 'hi' ? 'वीडियो डेमो देखें (2:00)' : 'Watch Video Demo (2:00)'}</span>
+                </button>
+              </div>
             </div>
 
             {/* Bottom Row: 3 Floating Metric Pills + Floating Image Card */}

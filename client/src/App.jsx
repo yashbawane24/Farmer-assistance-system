@@ -16,6 +16,7 @@ import { AiAgronomistPage } from './pages/AiAgronomistPage.jsx';
 import { GovernmentSchemesPage } from './pages/GovernmentSchemesPage.jsx';
 import { MyFarmPage } from './pages/MyFarmPage.jsx';
 import { TechnologyAboutPage } from './pages/TechnologyAboutPage.jsx';
+import SFASWebsiteDemo from './components/SFASWebsiteDemo.jsx';
 
 import { Menu, Globe, User, LogIn } from 'lucide-react';
 import { LiveClock } from './components/LiveClock.jsx';
@@ -24,6 +25,9 @@ import './styles/sidebar.css';
 
 export function App() {
   const [currentRoute, setCurrentRoute] = useState(() => {
+    if (typeof window !== 'undefined' && (window.location.pathname === '/demo' || window.location.search.includes('demo') || window.location.hash === '#demo')) {
+      return 'demo';
+    }
     return localStorage.getItem('sfas_authenticated') === 'true' && localStorage.getItem('sfas_active_profile')
       ? 'dashboard'
       : 'home';
@@ -319,6 +323,25 @@ export function App() {
 
           {currentRoute === 'technology' && (
             <TechnologyAboutPage lang={lang} />
+          )}
+
+          {currentRoute === 'demo' && (
+            <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '16px 12px 48px 12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => handleNavigate(isAuthenticated ? 'dashboard' : 'home')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
+                >
+                  ← {lang === 'mr' ? 'अ‍ॅपवर परत जा' : lang === 'hi' ? 'ऐप पर वापस जाएं' : 'Back to App'}
+                </button>
+                <div style={{ fontSize: '0.88rem', color: 'var(--color-primary-forest)', fontWeight: 700 }}>
+                  🎬 {lang === 'mr' ? 'स्मार्ट फार्मर असिस्टन्स — थेट वॉकथ्रू व्हिडिओ' : lang === 'hi' ? 'स्मार्ट फार्मर असिस्टेंस — लाइव वॉकथ्रू वीडियो' : 'Smart Farmer Assistance System — Live Walkthrough Demo Video'}
+                </div>
+              </div>
+              <SFASWebsiteDemo shotBase="/demo-shots/" />
+            </div>
           )}
         </main>
 

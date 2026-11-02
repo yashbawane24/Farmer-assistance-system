@@ -10,6 +10,7 @@ import {
   CloudRain,
   Mic,
   FileText,
+  Play,
   LogOut,
   Menu,
   X
@@ -39,7 +40,8 @@ export function SidebarNav({
     { id: 'weather-alerts', label: t.nav.weatherAlerts, icon: CloudRain, accent: '#16A085' },
     { id: 'ai-agronomist', label: t.nav.aiAgronomist, icon: Mic, accent: '#1ABC9C' },
     { id: 'schemes', label: t.nav.schemes, icon: FileText, accent: '#2980B9' },
-    { id: 'my-farm', label: t.nav.myFarm, icon: User, accent: '#E67E22' }
+    { id: 'my-farm', label: t.nav.myFarm, icon: User, accent: '#E67E22' },
+    { id: 'demo', label: lang === 'mr' ? 'व्हिडिओ डेमो' : lang === 'hi' ? 'वीडियो डेमो' : 'Demo Video', icon: Play, accent: '#D35400' }
   ];
 
   return (
