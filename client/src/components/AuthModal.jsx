@@ -364,6 +364,58 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess, lang = 'en' }) {
               >
                 {loading ? t.auth.signingIn : t.auth.submitSignIn}
               </button>
+
+              {/* Quick Demo Login Presets */}
+              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed #D2E4D4' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#57625B', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>🌱 {lang === 'mr' ? 'डेमो खात्यासह त्वरित लॉगिन करा:' : lang === 'hi' ? 'डेमो खाते से तुरंत लॉगिन करें:' : '1-Click Quick Demo Login:'}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => {
+                      setEmail('ramesh@sfas.in');
+                      setPassword('demo123');
+                      executeLogin('ramesh@sfas.in', 'demo123');
+                    }}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      border: '1.5px solid #A7C957',
+                      backgroundColor: '#F4F9F4',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <strong style={{ display: 'block', fontSize: '0.84rem', color: '#112019' }}>Ramesh Patil</strong>
+                    <span style={{ fontSize: '0.72rem', color: '#57625B' }}>Nashik · Tomato · 2.2 Ac</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => {
+                      setEmail('rajesh@sfas.in');
+                      setPassword('demo123');
+                      executeLogin('rajesh@sfas.in', 'demo123');
+                    }}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      border: '1.5px solid #A7C957',
+                      backgroundColor: '#F4F9F4',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <strong style={{ display: 'block', fontSize: '0.84rem', color: '#112019' }}>Rajesh Deshmukh</strong>
+                    <span style={{ fontSize: '0.72rem', color: '#57625B' }}>Latur · Soybean · 6.0 Ac</span>
+                  </button>
+                </div>
+              </div>
             </form>
           ) : (
             <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
