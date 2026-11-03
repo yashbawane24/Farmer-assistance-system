@@ -105,16 +105,30 @@ async function withBrowserWeather(request) {
     const url = err?.details?.openMeteoUrl;
     const district = err?.details?.district;
     if (err?.code !== 'WEATHER_UNAVAILABLE' || !url || !district) throw err;
-    if (!sharedWeather.has(district)) {
-      sharedWeather.set(district, (async () => {
-        const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-        if (!res.ok) throw err;
-        const data = await res.json();
-        await fetchJson('/weather/live', { method: 'POST', body: JSON.stringify({ district, data }) });
-      })().finally(() => setTimeout(() => sharedWeather.delete(district), 5 * 60 * 1000)));
+    try {
+      if (!sharedWeather.has(district)) {
+        sharedWeather.set(district, (async () => {
+          const controller = new AbortController();
+          const tId = setTimeout(() => controller.abort(), 6000);
+          try {
+            const res = await fetch(url, { signal: controller.signal });
+            if (!res.ok) throw err;
+            const data = await res.json();
+            await fetchJson('/weather/live', { method: 'POST', body: JSON.stringify({ district, data }) });
+          } finally {
+            clearTimeout(tId);
+          }
+        })().finally(() => setTimeout(() => sharedWeather.delete(district), 5 * 60 * 1000)));
+      }
+      await sharedWeather.get(district);
+      return await request();
+    } catch {
+      const cached = localStorage.getItem(`sfas_cache_${district}_weather`);
+      if (cached) {
+        try { return JSON.parse(cached); } catch {}
+      }
+      throw err;
     }
-    await sharedWeather.get(district);
-    return request();
   }
 }
 
